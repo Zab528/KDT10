@@ -1,0 +1,6 @@
+<book>
+    <title>제모그</title>
+    <price>가격</price>
+    <print_data>출판일</print_data>
+    <writer>저자</writer>
+</book>
