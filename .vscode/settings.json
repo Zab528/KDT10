@@ -1,0 +1,10 @@
+﻿{
+  "emeraldwalk.runonsave": {
+    "commands": [
+      {
+        "match": ".*",
+        "cmd": "%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -File ${workspaceFolder}\\.vscode\\onSavePush.ps1 -file \"${file}\""
+      }
+    ]
+  }
+}
