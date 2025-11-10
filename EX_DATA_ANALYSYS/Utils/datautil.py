@@ -49,7 +49,6 @@ def check_unique(obj):
         print(f'[{col}] =====> {obj[col].nunique()}개/{obj[col].dtype}')
         print(obj[col].unique())
 
-
 ## ------------------------------------------------------------
 # 2) pandas/numpy만으로 Eta-squared(η²) 계산 함수
 ## ------------------------------------------------------------
