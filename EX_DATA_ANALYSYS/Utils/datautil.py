@@ -90,3 +90,68 @@ def eta_squared_np(df, cat_col, num_col):
 
     eta2 = ss_between / ss_total if ss_total > 0 else np.nan
     return float(eta2), float(ss_between), float(ss_total), int(len(counts))
+
+
+## ----------------------------------------------------------------------------
+## 함수기능 : IQR기반 이상치 여부 검사 후 결과 반환
+## 함수이름 : iqr_outlier_mask
+## 매개변수 : sr            <- Series 인스턴스
+##           k=1.5         <- 임계값
+## 결과반환 : 이상치 True, 정상 False로 된 Series 반환
+## ----------------------------------------------------------------------------
+def iqr_outlier_mask(sr, k=1.5):
+    # 오름차순 정렬 후 중앙값, 중앙값 왼쪽부분 중앙값, 오른쪽 부분 중앙값 추출
+    q1, q3 = sr.quantile([0.25, 0.75])
+    iqr    = q3 - q1
+    lower, upper = q1 - k * iqr, q3 + k * iqr
+    return (sr < lower) | (sr > upper)
+
+
+## ----------------------------------------------------------------------------
+## 함수기능 : 이상치 행 추출해서 해당 정보를 반환
+## 함수이름 : get_outlier_records
+## 매개변수 : dataDF
+##           numeric_cols
+##           k
+## 결과반환 : 이상치 행 추출해서 dict 변환
+##          {"columns":컬럼명, "index":행인덱스, "value":데이터}
+## ----------------------------------------------------------------------------
+def get_outlier_records(dataDF, numeric_cols, k=1.5):
+    ## 이상치 행/레코드 정보 저장
+    outlier_records = []
+
+    # 컬럼별 이상치 추출 및 정보 저장
+    for col in numeric_cols:
+        # 컬럼별 이상치 검사용 마스크
+        colSR = dataDF[col]
+        mask = iqr_outlier_mask(colSR, k=k)
+
+        # SR에서 1개라도 True면 True를 반환 : any() <-> all() 
+        if mask.any():
+            for idx in colSR[mask].index.to_list():
+                recordDict = {'columns':col, 
+                              "index":int(idx), 
+                              "value":float(colSR.loc[idx])}
+                outlier_records.append(recordDict)
+    return outlier_records
+
+## ----------------------------------------------------------------------------
+## 함수기능 : 이상치 치환 후 반환
+## 함수이름 : cap_iqr
+## 매개변수 : s      Series
+##           k=1.5 임계값
+## 결과반환 : 하한값/상한값으로 이상치 치환 후 반환
+## ----------------------------------------------------------------------------
+## => 해당 값은 생물학적으로 가능한가?
+def cap_iqr(s, k=1.5):
+    # 4분위수 계산
+    q1, q3 = s.quantile([0.25, 0.75])
+
+    # 사분위수범위
+    iqr    = q3 - q1
+
+    # 하한값/상한값
+    lo,hi = q1 -k*iqr, q3+k*iqr
+
+    # 치환 후 반환
+    return s.clip(lower=lo, upper=hi)
