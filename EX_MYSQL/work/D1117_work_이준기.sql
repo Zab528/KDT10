@@ -65,3 +65,21 @@ with CTE (col_1) as (
 )
 
 select * from CTE;
+
+# 특수 문자 %를 포함한 데이터 조회
+with CTE (col_1) as (
+    select 'A%BC' union ALL
+    select 'A_BC' union ALL
+    select 'ABC'
+)
+
+SELECT * from CTE where col_1 like '%';
+
+# ESCAPE로 특수 문자 %를 포함한 데이터 조회
+with CTE (col_1) as (
+    select 'A%BC' union ALL
+    select 'A_BC' union ALL
+    select 'ABC'
+)
+
+select * from CTE where col_1 like '%#%%' escape '#';
