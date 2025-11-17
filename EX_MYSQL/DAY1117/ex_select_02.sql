@@ -17,4 +17,5 @@ select DISTINCT speical_features  from film;
 
 -- special features 기준으로 그룹화
 select special_features from film
+from film
 group by special_features;
