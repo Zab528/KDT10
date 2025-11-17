@@ -13,4 +13,15 @@ select @x, @y, @x+@y;
 
 
 ## sakila 데이터베이스 store_id 개수를 변수로 저장
-select count(store_id) from sakila.customer;
+select @total_num := (select count(store_id) from sakila.customer);
+
+select @total_num;
+
+-- ====================================================
+-- 시스템 변수 : MySQL에서 미리 만들어둔 내장 변수들
+-- ====================================================
+-- 시스템 변수 보기
+show GLOBAL VARIABLES;
+
+-- 일부 시스템 변수 선택
+show GLOBAL VARIABLES like 'char%';
