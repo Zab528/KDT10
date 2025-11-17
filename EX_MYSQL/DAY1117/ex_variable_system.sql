@@ -13,3 +13,4 @@ select @x, @y, @x+@y;
 
 
 ## sakila 데이터베이스 store_id 개수를 변수로 저장
+select count(store_id) from sakila.customer;
