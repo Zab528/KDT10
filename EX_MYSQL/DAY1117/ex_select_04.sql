@@ -25,7 +25,7 @@ group by hometown, gender;
 
 
 -- 그룹별 행 수, gender 정렬
-select hometown, gender, count(gender)
+select hometown, gender, count(*) "인원수"
 from user
 group by hometown, gender
-order by gender ASC;
+order by hometown;
