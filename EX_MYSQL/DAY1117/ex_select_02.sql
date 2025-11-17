@@ -34,12 +34,12 @@ select DISTINCT rating
 from film;
 
 -- special features, rating 그룹화
-select special_features, rating, count(rating)
+select special_features, rating
 from film
 group by special_features, rating;
 
 -- special features, rating 그룹별 소속된 행수
-select special_features, rating, rating
+select special_features, rating, count(rating)
 from film
 group by special_features, rating;
 
@@ -47,3 +47,19 @@ group by special_features, rating;
 select special_features, rating, count(rating)
 from film
 group by rating, special_features;
+
+
+-- ========================================================================
+-- count() 집계함수와 정렬 order by
+-- ========================================================================
+-- special features 그룹별 소속된 행 개수 파악 개수 파악
+select special_features, count(special_features) "CNT"
+from film
+group by special_features;
+
+
+-- special features 그룹별 소속된 행 개수 파악 개수 파악
+select special_features, count(special_features) "CNT"
+from film
+group by special_features
+order by cnt desc, special_features asc;
