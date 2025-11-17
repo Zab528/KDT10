@@ -21,10 +21,11 @@ group by hometown;
 -- hometown, gender 그룹화
 select hometown, gender
 from user
-group by hometown, gender
+group by hometown, gender;
 
 
 -- 그룹별 행 수, gender 정렬
 select hometown, gender, count(gender)
 from user
-group by hometown, gender, 
+group by hometown, gender
+order by gender ASC;
