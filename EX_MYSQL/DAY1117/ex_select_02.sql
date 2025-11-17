@@ -62,4 +62,5 @@ group by special_features;
 select special_features, count(special_features) "CNT"
 from film
 group by special_features
-order by cnt desc, special_features asc;
+order by cnt desc, special_features desc 
+limit 5;
