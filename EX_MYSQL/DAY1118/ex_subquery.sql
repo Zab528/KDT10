@@ -14,5 +14,11 @@ select * from customer
 where customer_id = (
     select customer_id from customer
 where first_name = 'ROSA'
-);-- ROSA의 customer_id
+);
+
+set @u_id := ( select customer_id from customer
+               where first_name = 'ROSA');
+
+select * from customer
+where customer_id = @u_id;
 
