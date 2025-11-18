@@ -4,147 +4,88 @@ from PIL import Image
 import base64
 from io import BytesIO
 import json
+import mysql.connector   # ✅ DB 접속용
 
-## ==================================================================
-## 데이터베이스
-## ==================================================================
+# ================================
+# DB 연결 함수 (값 너 환경에 맞게)
+# ================================
+def get_conn():
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="비밀번호",
+        database="dbc_db",   # 실제 DB 이름으로 변경
+    )
 
+# ================================
+# DBC 한 줄에서 신호 이름 뽑기
+#   예: 'SG_ CF_Tmu_VehSld : 0|1@1+ ...'
+#   → 'CF_Tmu_VehSld'
+# ================================
+def extract_signal_name(original_code: str) -> str:
+    s = original_code.strip()
+    if s.startswith("SG_"):
+        s = s[3:].lstrip()
+    # ':' 또는 공백 전까지를 이름으로 사용
+    for sep in [":", " "]:
+        idx = s.find(sep)
+        if idx != -1:
+            return s[:idx]
+    return s   # 안전용
 
-## ==================================================================
-## UI
-## ==================================================================
-st.set_page_config(layout="wide")
+# ================================
+# 신호 이름으로 CAN ID / start_bit / bit_length 조회
+# signals_info.name = 신호이름
+# messages.id = signals_info.message_id
+# messages.frame_id = CAN ID
+# ================================
+def get_signal_info(signal_name: str):
+    conn = get_conn()
+    cur = conn.cursor(dictionary=True)
 
-
-# ============================================
-# 클래스 정의 (CarPoint)
-# ============================================
-class CarPoint:
-    def __init__(self, id, name, start_bit, bit_length, factor, offset, x, y):
-        self.id = id  # 점 ID / 식별자
-        self.name = name  # 신호 이름
-        self.start_bit = start_bit
-        self.bit_length = bit_length
-        self.factor = factor
-        self.offset = offset
-
-        self.x = x  # 화면에서 점 위치
-        self.y = y
-
-    def to_dict(self):
-        return self.__dict__
-
-
-# ============================================
-# 이미지 → base64 변환
-# ============================================
-def load_image_base64(path):
-    img = Image.open(path)
-    buf = BytesIO()
-    img.save(buf, format="PNG")
-    b64 = base64.b64encode(buf.getvalue()).decode()
-    return img.size[0], img.size[1], b64
-
-
-orig_w, orig_h, car_base64 = load_image_base64("car.png")
-
-
-## =====================================================================================
-
-# ============================================
-# CSS (padding 없애고 컬럼 제대로 배치)
-# ============================================
-st.markdown(
+    query = """
+        SELECT 
+            m.frame_id AS can_id,
+            s.start_bit,
+            s.bit_length
+        FROM signals_info AS s
+        JOIN messages AS m
+          ON s.message_id = m.id
+        WHERE s.name = %s
+        LIMIT 1;
     """
-<style>
-/* 전체 좌우 레이아웃 여백 */
-.block-container {
-    padding-top: 20px;
-    padding-left: 130px;
-    padding-right: 30px;
-    margin-top: 10px;
-}
+    cur.execute(query, (signal_name,))
+    row = cur.fetchone()
 
-/* 실행, 로그 버튼 스타일 */
-.stButton > button {
-    width: 140px;
-    height: 40px;
-    background-color: #f7eaea;
-    border-radius: 7px;
-    border: 1px solid #ccc;
-    font-size: 16px;
-}
-
-/* 버튼 사이 간격 */
-.stButton {
-    margin-top: 27px;
-    margin-right: 10px;
-}
-</style>
-""",
-    unsafe_allow_html=True,
-)
-
-# ============================================
-# 가로 6:4 로 나누기
-# ============================================
-left_col, right_col = st.columns([6, 4])
-
-# --------------------------------------------
-# 왼쪽 CAN UI
-# --------------------------------------------
-with left_col:
-    st.markdown("## ~ CAN 통신 해석 ~")
-
-    # selectbox + 실행 & 로그 버튼 가로 배치
-    with st.container():
-        colA, colB, colC = st.columns([4, 1, 1])
-
-        with colA:
-            search_value = st.text_input("CAN 통신값 검색", placeholder="검색")
-
-        with colB:
-            exec_btn = st.button("해석")
-
-        with colC:
-            log_btn = st.button("로그")
-
-    # ============================================
-    # CAN ID 및 BIT 입력
-    # ============================================
-
-    # 예시 데이터베이스 (실제로는 DB 쿼리로 가져와야 함)
-    db_results = {
-        "fgfg": {"CAN ID": 1532, "BIT": 10},
-        "abc": {"CAN ID": 2048, "BIT": 15},
-        "xyz": {"CAN ID": 1024, "BIT": 7},
-    }
-
+    cur.close()
+    conn.close()
+    return row  # 없으면 None
     # ================================
-    # 버튼 클릭 시, DB에서 검색
+    # 버튼 클릭 시, DBC 풀네임 → 신호 이름 → DB 조회
     # ================================
     if exec_btn and search_value:
-        # 검색어에 맞는 DB 값 찾기
-        result = db_results.get(search_value, None)
+        # 1) original_code 한 줄에서 신호 이름 추출
+        signal_name = extract_signal_name(search_value)
 
-        # ========================
-        # 1. 빈 칸을 미리 만들어 두기
-        # ========================
-        can_id_placeholder = st.empty()  # CAN ID 결과 칸
-        empty_space=st.empty()
+        # 2) DB에서 CAN ID / start_bit / bit_length 조회
+        info = get_signal_info(signal_name)
+
+        # 결과 출력용 placeholder
+        can_id_placeholder = st.empty()
+        empty_space = st.empty()
         empty_space.markdown(
-        """
-        <div style="width: 100%; height: 2px;"></div>
-        """,
+            """
+            <div style="width: 100%; height: 2px;"></div>
+            """,
             unsafe_allow_html=True,
         )
+        bit_placeholder = st.empty()
 
-        bit_placeholder = st.empty()  # BIT 결과 칸
+        if info:
+            can_id = info["can_id"]
+            start_bit = info["start_bit"]
+            bit_length = info["bit_length"]
 
-        # ========================
-        # 2. 검색 결과 표시
-        # ========================
-        if result:
             # CAN ID 출력
             can_id_placeholder.markdown(
                 f"""
@@ -158,12 +99,13 @@ with left_col:
                     border: 1px solid #ccc;
                     color: #333;
                 ">
-                    CAN ID: {result['CAN ID']}
+                    CAN ID: {can_id}
                 </div>
-                """, unsafe_allow_html=True
+                """,
+                unsafe_allow_html=True,
             )
 
-            # BIT 출력
+            # BIT 정보 출력 (start_bit | bit_length)
             bit_placeholder.markdown(
                 f"""
                 <div style="
@@ -176,126 +118,13 @@ with left_col:
                     border: 1px solid #ccc;
                     color: #333;
                 ">
-                    BIT: {result['BIT']}
+                    BIT: {start_bit} | {bit_length}
                 </div>
-                """, unsafe_allow_html=True
+                """,
+                unsafe_allow_html=True,
             )
         else:
-            # 검색 결과가 없을 때 메시지 출력
-            st.warning("검색 결과가 없습니다. 입력된 값이 틀린 것 같습니다.")
-
-    # 여백 추가
-    st.markdown("<hr><br>", unsafe_allow_html=True)
-
-    # ===================================
-    # 6:4 비율로 결과를 표시할 두 상자
-    # ===================================
-    col1, col2 = st.columns([6, 4])
-
-    db_result_1 = "DB에서 가져온 결과 1"  # for col1
-    db_result_2 = "DB에서 가져온 결과 2"  # for col2
-
-    # 첫 번째 상자에 DB 결과를 표시
-    with col1:
-        st.markdown(f"""
-        <div style="
-            width: 100%;
-            height: 200px;
-            background-color: #f7eaea;
-            border-radius: 12px;
-            padding: 20px;
-            font-size: 18px;
-            color: #333;
-        ">
-        {db_result_1}
-        </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    # 두 번째 상자에 다른 DB 결과를 표시
-    with col2:
-        st.markdown(f"""
-        <div style="
-            width: 100%;
-            height: 200px;
-            background-color: #e0e0e0;
-            border-radius: 12px;
-            padding: 20px;
-            font-size: 18px;
-            color: #333;
-        ">
-            {db_result_2}
-        </div>
-        """,
-            unsafe_allow_html=True,
-        )
-
-# --------------------------------------------
-# 오른쪽 자동차 캔버스
-# --------------------------------------------
-with right_col:
-    x = orig_w // 2 + 15
-    # 점 8개 생성
-    points = [
-        CarPoint("front_bumper", "SCC_ObjDist", 32, 16, 0.1, 0, x, 120),
-        CarPoint("bonnet", "ENG_RPM", 8, 16, 1, 0, x, 200),
-        CarPoint("windshield_left", "LDWS_LnStr", 12, 8, 1, 0, x - 100, 150),
-        CarPoint("windshield_right", "HBA_LAMP", 20, 1, 1, 0, x + 100, 150),
-        CarPoint("roof", "GPS_Lat", 0, 32, 0.0001, 0, x, 40),
-        CarPoint("rear_glass", "RVM_STATUS", 16, 8, 1, 0, x, 450),
-        CarPoint("right_door", "DOOR_STATUS_FR", 4, 2, 1, 0, x, 300),
-        CarPoint("trunk", "POS_RR_W_LAMP", 48, 1, 1, 0, x, 550),
-    ]
-
-    # JSON 변환 (여기서 정의!!)
-    points_json = json.dumps([p.to_dict() for p in points])
-
-    # canvas_html 생성
-    canvas_html = f"""
-    <canvas id="carCanvas" width="{orig_w}" height="{orig_h}"
-            style="
-                border:none;
-                background-image:url('data:image/png;base64,{car_base64}'); 
-                background-size:100% 100%;
-                background-repeat:no-repeat;
-                background-position:center;
-            ">
-    </canvas>
-
-    <script>
-    let points = {points_json};
-
-    let c = document.getElementById("carCanvas");
-    let ctx = c.getContext("2d");
-
-    function drawPoints() {{
-        ctx.clearRect(0, 0, c.width, c.height);
-        points.forEach(p => {{
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, 10, 0, 2*Math.PI);
-            ctx.fillStyle = p.color || "red";
-            ctx.fill();
-        }});
-    }}
-
-    c.addEventListener("click", (e) => {{
-        const rect = c.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
-        points.forEach(p => {{
-            if (Math.hypot(p.x - x, p.y - y) < 30) {{
-                p.color = (p.color === "red") ? "green" : "red";
-            }}
-        }});
-
-        drawPoints();
-    }});
-
-    drawPoints();
-    </script>
-    """
-
-    # HTML 렌더링
-    components.html(canvas_html, height=orig_h + 20)
+            st.warning(
+                f"'{signal_name}' 에 해당하는 신호를 찾지 못했습니다.\n"
+                "signals_info.name 이랑 original_code 내용이 맞는지 확인해보세요."
+            )
