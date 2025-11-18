@@ -225,6 +225,7 @@ class CanAnalyzerApp:
             messagebox.showwarning("알림", "CAN 통신 한 줄을 입력하세요.")
             return
 
+        # SG_ ... 에서 SAS_Angle만 쏙 뽑기
         signal_name = extract_signal_name(original)
         info = get_signal_info(signal_name)
 
@@ -245,6 +246,7 @@ class CanAnalyzerApp:
             self.lbl_can_id.pack_forget()
             self.lbl_bit.pack_forget()
             messagebox.showwarning("알림", f"'{signal_name}' 에 해당하는 신호를 찾을 수 없습니다.")
+
 
     def draw_points(self):
         self.canvas.delete("dots")
