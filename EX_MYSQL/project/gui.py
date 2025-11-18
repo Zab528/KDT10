@@ -66,26 +66,64 @@ def get_signal_info(signal_name: str):
     try:
         cur = conn.cursor(dictionary=True)
 
-        # 1) original_code에서 signal_name으로 한 줄 찾기
-        query_oc = """
+        # 디버깅용: 실제 파라미터가 어떻게 들어가는지 확인
+        print("[DEBUG] signal_name 파라미터:", repr(signal_name))
+
+        # 1) original_code에서 signal_name으로 한 줄 찾기 (정확 매칭)
+        query_oc1 = """
             SELECT id, message_id, signal_name, original_code
             FROM original_code
             WHERE signal_name = %s
             LIMIT 1;
         """
-        cur.execute(query_oc, (signal_name,))
+        cur.execute(query_oc1, (signal_name,))
         oc_row = cur.fetchone()
 
+        # 2) 못 찾았으면 TRIM 해서 한 번 더 (양쪽 공백 제거)
         if not oc_row:
-            # original_code 자체에 없으면 그냥 종료
+            print("[DEBUG] 정확 매칭 실패, TRIM 매칭 시도")
+            query_oc2 = """
+                SELECT id, message_id, signal_name, original_code
+                FROM original_code
+                WHERE TRIM(signal_name) = TRIM(%s)
+                LIMIT 1;
+            """
+            cur.execute(query_oc2, (signal_name,))
+            oc_row = cur.fetchone()
+
+        # 3) 그래도 못 찾으면 original_code 안에 포함되는지 LIKE로 검색
+        if not oc_row:
+            print("[DEBUG] TRIM 매칭 실패, LIKE 매칭 시도")
+            query_oc3 = """
+                SELECT id, message_id, signal_name, original_code
+                FROM original_code
+                WHERE original_code LIKE %s
+                LIMIT 1;
+            """
+            like_pattern = f"%{signal_name}%"
+            cur.execute(query_oc3, (like_pattern,))
+            oc_row = cur.fetchone()
+
+        # 여기까지 해서도 못 찾으면 진짜 없는 것
+        if not oc_row:
+            print("[DEBUG] original_code 테이블에서 신호를 찾지 못함")
             cur.close()
             conn.close()
             return None
 
-        # 2) original_code 문자열에서 start_bit / bit_length 파싱
+        print("[DEBUG] 찾은 row:", oc_row)
+
+        # 4) original_code 문자열에서 start_bit / bit_length 파싱
         start_bit, bit_length = parse_bits_from_original_code(oc_row["original_code"])
 
-        # 3) message_id로 messages에서 frame_id 조회 (있으면)
+        # 파싱 실패해도 최소한 디버깅 로그 남기기
+        if start_bit is None or bit_length is None:
+            print("[DEBUG] original_code 파싱 실패:", oc_row["original_code"])
+            cur.close()
+            conn.close()
+            return None
+
+        # 5) message_id로 messages에서 frame_id 조회 (있으면)
         can_id = None
         msg_id = oc_row.get("message_id")
 
@@ -98,13 +136,13 @@ def get_signal_info(signal_name: str):
             """
             cur.execute(query_msg, (msg_id,))
             msg_row = cur.fetchone()
+            print("[DEBUG] messages 조회 결과:", msg_row)
             if msg_row:
                 can_id = msg_row["frame_id"]
 
         cur.close()
         conn.close()
 
-        # 4) 리턴 (CAN ID 없어도 bit 정보만이라도 리턴)
         return {
             "can_id": can_id,
             "start_bit": start_bit,
@@ -114,8 +152,6 @@ def get_signal_info(signal_name: str):
     except Error as e:
         messagebox.showerror("DB 조회 에러", f"신호 정보를 조회하는 중 에러가 발생했습니다.\n\n{e}")
         return None
-
-
 
 
 # ============================================
