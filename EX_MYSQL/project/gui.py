@@ -67,34 +67,46 @@ def get_signal_info(signal_name: str):
         cur = conn.cursor(dictionary=True)
 
         # 1) original_code에서 signal_name으로 한 줄 찾기
-        query = """
-            SELECT 
-                m.frame_id AS can_id,
-                o.original_code
-            FROM original_code AS o
-            JOIN messages AS m
-              ON o.message_id = m.id
-            WHERE o.signal_name = %s
+        query_oc = """
+            SELECT id, message_id, signal_name, original_code
+            FROM original_code
+            WHERE signal_name = %s
             LIMIT 1;
         """
-        cur.execute(query, (signal_name,))
-        row = cur.fetchone()
-        cur.close()
-        conn.close()
+        cur.execute(query_oc, (signal_name,))
+        oc_row = cur.fetchone()
 
-        if not row:
+        if not oc_row:
+            # original_code 자체에 없으면 그냥 종료
+            cur.close()
+            conn.close()
             return None
 
         # 2) original_code 문자열에서 start_bit / bit_length 파싱
-        start_bit, bit_length = parse_bits_from_original_code(row["original_code"])
+        start_bit, bit_length = parse_bits_from_original_code(oc_row["original_code"])
 
-        if start_bit is None or bit_length is None:
-            # 파싱 실패하면 None 리턴
-            return None
+        # 3) message_id로 messages에서 frame_id 조회 (있으면)
+        can_id = None
+        msg_id = oc_row.get("message_id")
 
-        # 3) UI에서 쓰기 편하게 dict로 반환
+        if msg_id is not None:
+            query_msg = """
+                SELECT frame_id
+                FROM messages
+                WHERE id = %s
+                LIMIT 1;
+            """
+            cur.execute(query_msg, (msg_id,))
+            msg_row = cur.fetchone()
+            if msg_row:
+                can_id = msg_row["frame_id"]
+
+        cur.close()
+        conn.close()
+
+        # 4) 리턴 (CAN ID 없어도 bit 정보만이라도 리턴)
         return {
-            "can_id": row["can_id"],
+            "can_id": can_id,
             "start_bit": start_bit,
             "bit_length": bit_length,
         }
@@ -102,6 +114,7 @@ def get_signal_info(signal_name: str):
     except Error as e:
         messagebox.showerror("DB 조회 에러", f"신호 정보를 조회하는 중 에러가 발생했습니다.\n\n{e}")
         return None
+
 
 
 
