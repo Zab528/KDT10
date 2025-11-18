@@ -37,6 +37,24 @@ def get_conn():
         messagebox.showerror("DB 접속 에러", f"DB에 접속할 수 없습니다.\n\n{e}")
         return None
 
+def parse_bits_from_original_code(original_code: str):
+    """
+    예: 'SG_ SAS_Angle : 0|16@little_endian 0.1 0.0 Deg'
+    → start_bit = 0, bit_length = 16
+    """
+    try:
+        # ':' 뒤쪽만 잘라서
+        after_colon = original_code.split(":", 1)[1].strip()
+        # '@' 앞까지만 사용 → '0|16'
+        before_at = after_colon.split("@", 1)[0].strip()
+        start_str, length_str = before_at.split("|")
+        return int(start_str), int(length_str)
+    except Exception:
+        # 파싱 실패 시 기본값
+        return None, None
+
+
+
 # ============================================
 # 신호 이름으로 CAN ID / start_bit / bit_length 조회
 # ============================================
@@ -48,73 +66,43 @@ def get_signal_info(signal_name: str):
     try:
         cur = conn.cursor(dictionary=True)
 
-        row = None
-
-        # 1) signals.name 으로 먼저 시도
-        try:
-            query1 = """
-                SELECT 
-                    m.frame_id AS can_id,
-                    s.start_bit,
-                    s.bit_length
-                FROM signals AS s
-                JOIN messages AS m
-                  ON s.message_id = m.id
-                WHERE s.name = %s
-                LIMIT 1;
-            """
-            cur.execute(query1, (signal_name,))
-            row = cur.fetchone()
-        except Error:
-            row = None
-
-        # 2) signals.signal_name 으로 한 번 더 시도
-        if not row:
-            try:
-                query2 = """
-                    SELECT 
-                        m.frame_id AS can_id,
-                        s.start_bit,
-                        s.bit_length
-                    FROM signals AS s
-                    JOIN messages AS m
-                      ON s.message_id = m.id
-                    WHERE s.signal_name = %s
-                    LIMIT 1;
-                """
-                cur.execute(query2, (signal_name,))
-                row = cur.fetchone()
-            except Error:
-                row = None
-
-        # 3) original_code.signal_name 을 signals / messages 와 조인해서 시도
-        if not row:
-            try:
-                query3 = """
-                    SELECT 
-                        m.frame_id AS can_id,
-                        s.start_bit,
-                        s.bit_length
-                    FROM original_code AS o
-                    JOIN signals AS s
-                      ON o.signal_name = s.name
-                    JOIN messages AS m
-                      ON s.message_id = m.id
-                    WHERE o.signal_name = %s
-                    LIMIT 1;
-                """
-                cur.execute(query3, (signal_name,))
-                row = cur.fetchone()
-            except Error:
-                row = None
-
+        # 1) original_code에서 signal_name으로 한 줄 찾기
+        query = """
+            SELECT 
+                m.frame_id AS can_id,
+                o.original_code
+            FROM original_code AS o
+            JOIN messages AS m
+              ON o.message_id = m.id
+            WHERE o.signal_name = %s
+            LIMIT 1;
+        """
+        cur.execute(query, (signal_name,))
+        row = cur.fetchone()
         cur.close()
         conn.close()
-        return row
+
+        if not row:
+            return None
+
+        # 2) original_code 문자열에서 start_bit / bit_length 파싱
+        start_bit, bit_length = parse_bits_from_original_code(row["original_code"])
+
+        if start_bit is None or bit_length is None:
+            # 파싱 실패하면 None 리턴
+            return None
+
+        # 3) UI에서 쓰기 편하게 dict로 반환
+        return {
+            "can_id": row["can_id"],
+            "start_bit": start_bit,
+            "bit_length": bit_length,
+        }
 
     except Error as e:
         messagebox.showerror("DB 조회 에러", f"신호 정보를 조회하는 중 에러가 발생했습니다.\n\n{e}")
         return None
+
 
 
 # ============================================
