@@ -288,6 +288,9 @@ def analyze_can(self):
         self.lbl_bit.pack_forget()
         messagebox.showwarning("알림", f"'{signal_name}' 에 해당하는 신호를 찾을 수 없습니다.")
 
+
+
+
     def draw_points(self):
         self.canvas.delete("dots")
         r = 10
