@@ -12,9 +12,9 @@ import mysql.connector   # ✅ DB 접속용
 def get_conn():
     return mysql.connector.connect(
         host="localhost",
-        user="root",
-        password="비밀번호",   # ← 너 비번
-        database="dbc_db",      # ← 실제 DB 이름
+        user="user1",
+        password="user1",   # ← 너 비번
+        database="car_skill",      # ← 실제 DB 이름
     )
 
 # ================================
