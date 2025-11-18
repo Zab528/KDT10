@@ -1,339 +1,177 @@
-import streamlit as st
-import streamlit.components.v1 as components
-from PIL import Image
-import base64
-from io import BytesIO
-import json
-import mysql.connector   # ✅ DB 접속용
-
-# ================================
-# DB 연결 함수 (네 환경에 맞게 수정)
-# ================================
-def get_conn():
-    return mysql.connector.connect(
-        host="172.30.1.87",
-        user="user1",
-        password="user1",   # ← 너 비번
-        database="car_skill"      # ← 실제 DB 이름
-    )
-
-# ================================
-# DBC 한 줄에서 신호 이름 뽑기
-#   예: 'SG_ CF_Tmu_VehSld : 0|1@1+ ...'
-#   → 'CF_Tmu_VehSld'
-# ================================
-def extract_signal_name(original_code: str) -> str:
-    s = original_code.strip()
-    if s.startswith("SG_"):
-        s = s[3:].lstrip()
-    # ':' 또는 공백 전까지를 이름으로 사용
-    for sep in [":", " "]:
-        idx = s.find(sep)
-        if idx != -1:
-            return s[:idx]
-    return s   # 안전용
-
-# ================================
-# 신호 이름으로 CAN ID / start_bit / bit_length 조회
-#   signals_info.name = 신호이름
-#   messages.id       = signals_info.message_id
-#   messages.frame_id = CAN ID
-# ================================
-def get_signal_info(signal_name: str):
-    conn = get_conn()
-    cur = conn.cursor(dictionary=True)
-
-    query = """
-        SELECT 
-            m.frame_id AS can_id,
-            s.start_bit,
-            s.bit_length
-        FROM signals_info AS s
-        JOIN messages AS m
-          ON s.message_id = m.id
-        WHERE s.name = %s
-        LIMIT 1;
-    """
-    cur.execute(query, (signal_name,))
-    row = cur.fetchone()
-
-    cur.close()
-    conn.close()
-    return row  # 없으면 None
-
-
-# ==================================================================
-# UI 설정
-# ==================================================================
-st.set_page_config(layout="wide")
-
+import tkinter as tk
+from tkinter import messagebox
+from PIL import Image, ImageTk
+import math
 
 # ============================================
 # 클래스 정의 (CarPoint)
 # ============================================
 class CarPoint:
-    def __init__(self, id, name, start_bit, bit_length, factor, offset, x, y):
-        self.id = id  # 점 ID / 식별자
-        self.name = name  # 신호 이름
-        self.start_bit = start_bit
-        self.bit_length = bit_length
-        self.factor = factor
-        self.offset = offset
-
-        self.x = x  # 화면에서 점 위치
+    def __init__(self, id, name, x, y):
+        self.id = id
+        self.name = name
+        self.x = x
         self.y = y
+        self.color = "red"  # 초기 색상
 
-    def to_dict(self):
-        return self.__dict__
-
-
-# ============================================
-# 이미지 → base64 변환
-# ============================================
-def load_image_base64(path):
-    img = Image.open(path)
-    buf = BytesIO()
-    img.save(buf, format="PNG")
-    b64 = base64.b64encode(buf.getvalue()).decode()
-    return img.size[0], img.size[1], b64
-
-
-orig_w, orig_h, car_base64 = load_image_base64("car.png")
-
+    def toggle_color(self):
+        self.color = "green" if self.color == "red" else "red"
 
 # ============================================
-# CSS (padding 없애고 컬럼 제대로 배치)
+# 메인 애플리케이션 클래스
 # ============================================
-st.markdown(
-    """
-<style>
-/* 전체 좌우 레이아웃 여백 */
-.block-container {
-    padding-top: 20px;
-    padding-left: 130px;
-    padding-right: 30px;
-    margin-top: 10px;
-}
+class CanAnalyzerApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("CAN 통신 해석기")
+        self.root.geometry("1200x700")
 
-/* 실행, 로그 버튼 스타일 */
-.stButton > button {
-    width: 140px;
-    height: 40px;
-    background-color: #f7eaea;
-    border-radius: 7px;
-    border: 1px solid #ccc;
-    font-size: 16px;
-}
+        # 데이터베이스 (임시)
+        self.db_results = {
+            "fgfg": {"CAN ID": 1532, "BIT": 10},
+            "abc": {"CAN ID": 2048, "BIT": 15},
+            "xyz": {"CAN ID": 1024, "BIT": 7},
+        }
 
-/* 버튼 사이 간격 */
-.stButton {
-    margin-top: 27px;
-    margin-right: 10px;
-}
-</style>
-""",
-    unsafe_allow_html=True,
-)
+        # UI 레이아웃 설정 (좌/우 분할)
+        self.setup_layout()
+        
+        # 초기 데이터 로드 및 캔버스 설정
+        self.load_image_and_points()
 
-# ============================================
-# 가로 6:4 로 나누기
-# ============================================
-left_col, right_col = st.columns([6, 4])
+    def setup_layout(self):
+        # --- 1. 왼쪽 패널 (컨트롤 및 결과) ---
+        left_frame = tk.Frame(self.root, width=400, padx=20, pady=20)
+        left_frame.pack(side="left", fill="y")
+        left_frame.pack_propagate(False)  # 크기 고정
 
-# --------------------------------------------
-# 왼쪽 CAN UI
-# --------------------------------------------
-with left_col:
-    st.markdown("## ~ CAN 통신 해석 ~")
+        # 타이틀
+        tk.Label(left_frame, text="~ CAN 통신 해석 ~", font=("Arial", 20, "bold")).pack(pady=(0, 30))
 
-    # selectbox + 실행 & 로그 버튼 가로 배치
-    with st.container():
-        colA, colB, colC = st.columns([4, 1, 1])
+        # 검색 영역 프레임
+        search_frame = tk.Frame(left_frame)
+        search_frame.pack(fill="x", pady=10)
 
-        with colA:
-            search_value = st.text_input("CAN 통신값 검색", placeholder="original_code 한 줄 붙여넣기")
+        tk.Label(search_frame, text="CAN 통신값 검색").pack(anchor="w")
+        
+        self.search_entry = tk.Entry(search_frame, font=("Arial", 12))
+        self.search_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
 
-        with colB:
-            exec_btn = st.button("해석")
+        btn_analyze = tk.Button(search_frame, text="해석", command=self.analyze_can, bg="#f7eaea", width=8)
+        btn_analyze.pack(side="left", padx=2)
 
-        with colC:
-            log_btn = st.button("로그")
+        btn_log = tk.Button(search_frame, text="로그", command=lambda: print("로그 버튼 클릭됨"), bg="#f7eaea", width=8)
+        btn_log.pack(side="left", padx=2)
 
-    # ================================
-    # 버튼 클릭 시, DBC 풀네임 → 신호 이름 → DB 조회
-    # ================================
-    if exec_btn and search_value:
-        # 1) original_code 한 줄에서 신호 이름 추출
-        signal_name = extract_signal_name(search_value)
+        # 결과 표시 영역 (Search Result)
+        self.result_frame = tk.Frame(left_frame, pady=20)
+        self.result_frame.pack(fill="x")
 
-        # 2) DB에서 CAN ID / start_bit / bit_length 조회
-        info = get_signal_info(signal_name)
+        self.lbl_can_id = tk.Label(self.result_frame, text="", bg="#f0f0f0", anchor="w", padx=10, pady=10, relief="solid", bd=1)
+        self.lbl_bit = tk.Label(self.result_frame, text="", bg="#f0f0f0", anchor="w", padx=10, pady=10, relief="solid", bd=1)
 
-        # 결과 출력용 placeholder
-        can_id_placeholder = st.empty()
-        empty_space = st.empty()
-        empty_space.markdown(
-            """
-            <div style="width: 100%; height: 2px;"></div>
-            """,
-            unsafe_allow_html=True,
-        )
-        bit_placeholder = st.empty()
+        # 하단 큰 결과 박스들
+        tk.Label(left_frame, text="").pack() # 여백
+        
+        self.box1 = tk.Label(left_frame, text="DB에서 가져온 결과 1", bg="#f7eaea", height=10, relief="flat", anchor="nw", padx=10, pady=10, font=("Arial", 11))
+        self.box1.pack(fill="x", pady=10)
 
-        if info:
-            can_id = info["can_id"]
-            start_bit = info["start_bit"]
-            bit_length = info["bit_length"]
+        self.box2 = tk.Label(left_frame, text="DB에서 가져온 결과 2", bg="#e0e0e0", height=10, relief="flat", anchor="nw", padx=10, pady=10, font=("Arial", 11))
+        self.box2.pack(fill="x", pady=10)
 
-            # CAN ID 출력
-            can_id_placeholder.markdown(
-                f"""
-                <div style="
-                    width: 100%;
-                    height: 40px;
-                    padding: 10px;
-                    font-size: 16px;
-                    background-color: #f0f0f0;
-                    border-radius: 5px;
-                    border: 1px solid #ccc;
-                    color: #333;
-                ">
-                    CAN ID: {can_id}
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+        # --- 2. 오른쪽 패널 (자동차 이미지 캔버스) ---
+        self.right_frame = tk.Frame(self.root, bg="white")
+        self.right_frame.pack(side="right", fill="both", expand=True)
 
-            # BIT 정보 출력 (start_bit | bit_length)
-            bit_placeholder.markdown(
-                f"""
-                <div style="
-                    width: 100%;
-                    height: 40px;
-                    padding: 10px;
-                    font-size: 16px;
-                    background-color: #f0f0f0;
-                    border-radius: 5px;
-                    border: 1px solid #ccc;
-                    color: #333;
-                ">
-                    BIT: {start_bit} | {bit_length}
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+        self.canvas = tk.Canvas(self.right_frame, bg="white", highlightthickness=0)
+        self.canvas.pack(fill="both", expand=True)
+        
+        # 클릭 이벤트 바인딩
+        self.canvas.bind("<Button-1>", self.on_canvas_click)
+
+    def load_image_and_points(self):
+        try:
+            # 이미지 로드
+            self.orig_image = Image.open("car.png")
+            self.tk_image = ImageTk.PhotoImage(self.orig_image)
+            
+            # 이미지 중앙 정렬을 위한 좌표 계산
+            self.canvas_width = 800 # 대략적인 캔버스 폭
+            self.img_w, self.img_h = self.orig_image.size
+            
+            # 이미지 그리기
+            self.canvas.create_image(self.canvas_width//2, self.img_h//2 + 20, image=self.tk_image, anchor="center")
+            
+            # 점 데이터 초기화 (Streamlit 코드의 좌표 기반)
+            x = self.canvas_width // 2 + 15
+            
+            self.points = [
+                CarPoint("FL_Corner", "Front_Left_Sensor", x - 90, 45),
+                CarPoint("FR_Corner", "Front_Right_Sensor", x + 90, 45),
+                CarPoint("Side_L", "Side_Mirror_L", x - 130, 220),
+                CarPoint("Side_R", "Side_Mirror_R", x + 130, 220),
+                CarPoint("Seat_FL", "Driver_Seat", x - 45, 290),
+                CarPoint("Seat_FR", "Passenger_Seat", x + 45, 290),
+                CarPoint("Door_FL", "Door_Front_L", x - 120, 310),
+                CarPoint("Door_FR", "Door_Front_R", x + 120, 310),
+                CarPoint("Seat_RL", "Rear_Seat_L", x - 45, 400),
+                CarPoint("Seat_RR", "Rear_Seat_R", x + 45, 400),
+                CarPoint("Door_RL", "Door_Rear_L", x - 120, 430),
+                CarPoint("Door_RR", "Door_Rear_R", x + 120, 430),
+                CarPoint("RL_Corner", "Rear_Left_Sensor", x - 100, 570),
+                CarPoint("RR_Corner", "Rear_Right_Sensor", x + 100, 570),
+            ]
+            
+            self.draw_points()
+
+        except FileNotFoundError:
+            messagebox.showerror("에러", "car.png 파일을 찾을 수 없습니다.\n같은 폴더에 이미지를 넣어주세요.")
+
+    def analyze_can(self):
+        val = self.search_entry.get()
+        result = self.db_results.get(val)
+
+        if result:
+            self.lbl_can_id.config(text=f"CAN ID: {result['CAN ID']}")
+            self.lbl_can_id.pack(fill="x", pady=5) # 결과가 있을 때만 보이게 다시 팩
+            
+            self.lbl_bit.config(text=f"BIT: {result['BIT']}")
+            self.lbl_bit.pack(fill="x", pady=5)
         else:
-            st.warning(
-                f"'{signal_name}' 에 해당하는 신호를 찾지 못했습니다.\n"
-                "signals_info.name 이랑 original_code 내용이 맞는지 확인해보세요."
+            self.lbl_can_id.pack_forget() # 결과 없으면 숨김
+            self.lbl_bit.pack_forget()
+            messagebox.showwarning("알림", "검색 결과가 없습니다.")
+
+    def draw_points(self):
+        # 기존 점들 지우기 (태그 이용)
+        self.canvas.delete("dots")
+        
+        r = 10 # 점 반지름
+        for p in self.points:
+            # 원 그리기 (x1, y1, x2, y2)
+            self.canvas.create_oval(
+                p.x - r, p.y - r, p.x + r, p.y + r,
+                fill=p.color, outline="black", tags="dots"
             )
 
-    # 여백 + 아래 박스 두 개 (기존 그대로)
-    st.markdown("<hr><br>", unsafe_allow_html=True)
+    def on_canvas_click(self, event):
+        x, y = event.x, event.y
+        clicked = False
+        
+        for p in self.points:
+            # 클릭 좌표와 점 사이의 거리 계산 (피타고라스)
+            distance = math.hypot(p.x - x, p.y - y)
+            if distance < 15: # 반지름보다 약간 여유있게 클릭 판정
+                p.toggle_color()
+                clicked = True
+        
+        if clicked:
+            self.draw_points()
 
-    col1, col2 = st.columns([6, 4])
-
-    db_result_1 = "DB에서 가져온 결과 1"  # for col1
-    db_result_2 = "DB에서 가져온 결과 2"  # for col2
-
-    with col1:
-        st.markdown(
-            f"""
-        <div style="
-            width: 100%;
-            height: 200px;
-            background-color: #f7eaea;
-            border-radius: 12px;
-            padding: 20px;
-            font-size: 18px;
-            color: #333;
-        ">
-        {db_result_1}
-        </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    with col2:
-        st.markdown(
-            f"""
-        <div style="
-            width: 100%;
-            height: 200px;
-            background-color: #e0e0e0;
-            border-radius: 12px;
-            padding: 20px;
-            font-size: 18px;
-            color: #333;
-        ">
-            {db_result_2}
-        </div>
-        """,
-            unsafe_allow_html=True,
-        )
-
-# --------------------------------------------
-# 오른쪽 자동차 캔버스
-# --------------------------------------------
-with right_col:
-    x = orig_w // 2 + 15
-    # 점 8개 생성 (예시)
-    points = [
-        CarPoint("front_bumper", "SCC_ObjDist", 32, 16, 0.1, 0, x, 120),
-        CarPoint("bonnet", "ENG_RPM", 8, 16, 1, 0, x, 200),
-        CarPoint("windshield_left", "LDWS_LnStr", 12, 8, 1, 0, x - 100, 150),
-        CarPoint("windshield_right", "HBA_LAMP", 20, 1, 1, 0, x + 100, 150),
-        CarPoint("roof", "GPS_Lat", 0, 32, 0.0001, 0, x, 40),
-        CarPoint("rear_glass", "RVM_STATUS", 16, 8, 1, 0, x, 450),
-        CarPoint("right_door", "DOOR_STATUS_FR", 4, 2, 1, 0, x, 300),
-        CarPoint("trunk", "POS_RR_W_LAMP", 48, 1, 1, 0, x, 550),
-    ]
-
-    points_json = json.dumps([p.to_dict() for p in points])
-
-    canvas_html = f"""
-    <canvas id="carCanvas" width="{orig_w}" height="{orig_h}"
-            style="
-                border:none;
-                background-image:url('data:image/png;base64,{car_base64}'); 
-                background-size:100% 100%;
-                background-repeat:no-repeat;
-                background-position:center;
-            ">
-    </canvas>
-
-    <script>
-    let points = {points_json};
-
-    let c = document.getElementById("carCanvas");
-    let ctx = c.getContext("2d");
-
-    function drawPoints() {{
-        ctx.clearRect(0, 0, c.width, c.height);
-        points.forEach(p => {{
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, 10, 0, 2*Math.PI);
-            ctx.fillStyle = p.color || "red";
-            ctx.fill();
-        }});
-    }}
-
-    c.addEventListener("click", (e) => {{
-        const rect = c.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
-        points.forEach(p => {{
-            if (Math.hypot(p.x - x, p.y - y) < 30) {{
-                p.color = (p.color === "red") ? "green" : "red";
-            }}
-        }});
-
-        drawPoints();
-    }});
-
-    drawPoints();
-    </script>
-    """
-
-    components.html(canvas_html, height=orig_h + 20)
+# ============================================
+# 실행
+# ============================================
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = CanAnalyzerApp(root)
+    root.mainloop()
