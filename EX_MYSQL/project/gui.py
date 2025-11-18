@@ -52,7 +52,7 @@ def get_signal_info(signal_name: str):
                 m.frame_id AS can_id,
                 s.start_bit,
                 s.bit_length
-            FROM signals_info AS s
+            FROM  signal AS s
             JOIN messages AS m
               ON s.message_id = m.id
             WHERE s.name = %s
