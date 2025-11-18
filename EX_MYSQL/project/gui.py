@@ -40,32 +40,82 @@ def get_conn():
 # ============================================
 # 신호 이름으로 CAN ID / start_bit / bit_length 조회
 # ============================================
-def get_signal_info(signal_name: str):
+ddef get_signal_info(signal_name: str):
     conn = get_conn()
     if conn is None:
         return None
 
     try:
         cur = conn.cursor(dictionary=True)
-        query = """
-            SELECT 
-                m.frame_id AS can_id,
-                s.start_bit,
-                s.bit_length
-            FROM  signals AS s
-            JOIN messages AS m
-              ON s.message_id = m.id
-            WHERE s.name = %s
-            LIMIT 1;
-        """
-        cur.execute(query, (signal_name,))
-        row = cur.fetchone()
+
+        row = None
+
+        # 1) signals.name 으로 먼저 시도
+        try:
+            query1 = """
+                SELECT 
+                    m.frame_id AS can_id,
+                    s.start_bit,
+                    s.bit_length
+                FROM signals AS s
+                JOIN messages AS m
+                  ON s.message_id = m.id
+                WHERE s.name = %s
+                LIMIT 1;
+            """
+            cur.execute(query1, (signal_name,))
+            row = cur.fetchone()
+        except Error:
+            row = None
+
+        # 2) signals.signal_name 으로 한 번 더 시도
+        if not row:
+            try:
+                query2 = """
+                    SELECT 
+                        m.frame_id AS can_id,
+                        s.start_bit,
+                        s.bit_length
+                    FROM signals AS s
+                    JOIN messages AS m
+                      ON s.message_id = m.id
+                    WHERE s.signal_name = %s
+                    LIMIT 1;
+                """
+                cur.execute(query2, (signal_name,))
+                row = cur.fetchone()
+            except Error:
+                row = None
+
+        # 3) original_code.signal_name 을 signals / messages 와 조인해서 시도
+        if not row:
+            try:
+                query3 = """
+                    SELECT 
+                        m.frame_id AS can_id,
+                        s.start_bit,
+                        s.bit_length
+                    FROM original_code AS o
+                    JOIN signals AS s
+                      ON o.signal_name = s.name
+                    JOIN messages AS m
+                      ON s.message_id = m.id
+                    WHERE o.signal_name = %s
+                    LIMIT 1;
+                """
+                cur.execute(query3, (signal_name,))
+                row = cur.fetchone()
+            except Error:
+                row = None
+
         cur.close()
         conn.close()
         return row
+
     except Error as e:
         messagebox.showerror("DB 조회 에러", f"신호 정보를 조회하는 중 에러가 발생했습니다.\n\n{e}")
         return None
+
 
 # ============================================
 # 클래스 정의 (CarPoint)
