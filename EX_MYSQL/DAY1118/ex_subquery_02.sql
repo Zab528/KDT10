@@ -22,4 +22,20 @@ where customer_id in (
 );
 
 -- 연산자 ANY : 서브쿼리 결과 다중행 중 한 개라도 True면 True
+select * from customer
+where customer_id = ANY (
+    select customer_id from customer
+    where first_name in ('ROSA', 'ANA')
+);
 
+select * from customer
+where customer_id < ANY (
+    select customer_id from customer
+    where first_name in ('ROSA', 'ANA')
+);
+
+select * from customer
+where customer_id > ANY (
+    select customer_id from customer
+    where first_name in ('ROSA', 'ANA')
+);
