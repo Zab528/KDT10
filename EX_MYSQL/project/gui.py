@@ -298,8 +298,7 @@ class CanAnalyzerApp:
             self.lbl_bit.config(text=f"BIT: {bit_display_str}")
             self.lbl_bit.pack(fill="x", pady=5)
 
-            self.box1.config(text=f"신호 이름: {signal_name}\nCAN ID: {can_id}")
-            self.box2.config(text=f"start_bit: {start_bit}\nbit_length: {bit_length}")
+            
         else:
             self.lbl_can_id.pack_forget()
             self.lbl_bit.pack_forget()
