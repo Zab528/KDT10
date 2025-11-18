@@ -69,49 +69,16 @@ def get_signal_info(signal_name: str):
         # 디버깅용: 실제 파라미터가 어떻게 들어가는지 확인
         print("[DEBUG] signal_name 파라미터:", repr(signal_name))
 
-        # 1) original_code에서 signal_name으로 한 줄 찾기 (정확 매칭)
+        # 1) original_code에서 signal_name으로 한 줄 찾기 (양쪽 공백 제거)
         query_oc1 = """
-            SELECT id, message_id, signal_name, original_code
-            FROM original_code
-            WHERE signal_name = %s
-            LIMIT 1;
-        """
-        cur.execute(query_oc1, (signal_name,))
-        oc_row = cur.fetchone()
-
-        # 2) 못 찾았으면 TRIM 해서 한 번 더 (양쪽 공백 제거)
-        if not oc_row:
-            print("[DEBUG] 정확 매칭 실패, TRIM 매칭 시도")
-            query_oc2 = """
                 SELECT id, message_id, signal_name, original_code
                 FROM original_code
                 WHERE TRIM(signal_name) = TRIM(%s)
                 LIMIT 1;
             """
-            cur.execute(query_oc2, (signal_name,))
-            oc_row = cur.fetchone()
+        cur.execute(query_oc1, (signal_name,))
+        oc_row = cur.fetchone()
 
-        # 3) 그래도 못 찾으면 original_code 안에 포함되는지 LIKE로 검색
-        if not oc_row:
-            print("[DEBUG] TRIM 매칭 실패, LIKE 매칭 시도")
-            query_oc3 = """
-                SELECT id, message_id, signal_name, original_code
-                FROM original_code
-                WHERE original_code LIKE %s
-                LIMIT 1;
-            """
-            like_pattern = f"%{signal_name}%"
-            cur.execute(query_oc3, (like_pattern,))
-            oc_row = cur.fetchone()
-
-        # 여기까지 해서도 못 찾으면 진짜 없는 것
-        if not oc_row:
-            print("[DEBUG] original_code 테이블에서 신호를 찾지 못함")
-            cur.close()
-            conn.close()
-            return None
-
-        print("[DEBUG] 찾은 row:", oc_row)
 
         # 4) original_code 문자열에서 start_bit / bit_length 파싱
         start_bit, bit_length = parse_bits_from_original_code(oc_row["original_code"])
