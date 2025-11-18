@@ -244,25 +244,30 @@ class CanAnalyzerApp:
         # SG_ ... 에서 SAS_Angle만 쏙 뽑기
         signal_name = extract_signal_name(original)
         info = get_signal_info(signal_name)
-        print("여기띠: ",info)
+        print("여기띠: ", info)
 
         if info:
             can_id = info.get("can_id")
             start_bit = info.get("start_bit")
             bit_length = info.get("bit_length")
 
+            # CAN ID는 그대로 표시
             self.lbl_can_id.config(text=f"CAN ID: {can_id}")
             self.lbl_can_id.pack(fill="x", pady=5)
 
-            self.lbl_bit.config(text=f"BIT: {start_bit} | {bit_length}")
+            # BIT는 8바이트 00 패턴으로 표시 (추후에 실제 데이터로 교체 가능)
+            bit_display = "00 00 00 00 00 00 00 00"
+            self.lbl_bit.config(text=f"BIT: {bit_display}")
             self.lbl_bit.pack(fill="x", pady=5)
 
-            self.box1.config(text=f"신호 이름: {signal_name}\nCAN ID: {can_id}")
-            self.box2.config(text=f"start_bit: {start_bit}\nbit_length: {bit_length}")
+            # 밑에 박스는 그대로 (초기 텍스트 유지)
+            # self.box1 / self.box2 건들지 않기
+
         else:
             self.lbl_can_id.pack_forget()
             self.lbl_bit.pack_forget()
             messagebox.showwarning("알림", f"'{signal_name}' 에 해당하는 신호를 찾을 수 없습니다.")
+
 
 
     def draw_points(self):
