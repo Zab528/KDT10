@@ -53,22 +53,23 @@ def parse_bits_from_original_code(original_code: str):
 
 def calculate_bits(start_bit, bit_length):
     """
-    start_bit과 bit_length를 기반으로 간단히 8바이트 비트맵 생성
-    (ex: 0|8 → 0xFF 00 00 00 00 00 00 00 이런 느낌)
+    start_bit과 bit_length를 기반으로 실제 비트값을 계산.
+    예: start_bit=8, bit_length=8이면 0x04 00 00 00 00 00 00 00 이런 식으로 비트로 표시.
     """
-    total_bits = [0] * 8  # 8바이트
+    total_bits = [0] * 8  # 8바이트 (64비트)
 
-    if start_bit is None or bit_length is None:
-        return total_bits
+    # 비트 채우기 - start_bit부터 bit_length까지
+    for i in range(bit_length):
+        # @1+이면 비트를 오른쪽부터 채우는 방식
+        bit_position = start_bit + i  # 시작 비트에서부터
+        byte_index = bit_position // 8  # 어느 바이트에 속하는지
+        bit_index = 7 - (bit_position % 8)  # 오른쪽부터 비트 채우기 (7부터 시작)
 
-    for i in range(start_bit, start_bit + bit_length):
-        if i >= 64:   # 8바이트(64비트) 넘어가는 것은 무시
-            break
-        byte_index = i // 8
-        bit_index = i % 8
-        total_bits[byte_index] |= (1 << (7 - bit_index))
+        # 비트 위치에 1을 설정
+        total_bits[byte_index] |= (1 << bit_index)
 
     return total_bits
+
 
 # ============================================
 # 신호 이름으로 CAN ID / start_bit / bit_length 조회
