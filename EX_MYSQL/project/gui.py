@@ -53,6 +53,22 @@ def parse_bits_from_original_code(original_code: str):
         # 파싱 실패 시 기본값
         return None, None
 
+def calculate_bits(start_bit, bit_length):
+    """
+    start_bit과 bit_length를 기반으로 실제 비트값을 계산.
+    예: start_bit=8, bit_length=8이면 0x08, 0x00 ... 이런 식으로 비트로 표시.
+    """
+    # 각 비트의 값을 8비트 단위로 나눈 후, bit_length가 끝나는 위치까지 1을 채운다.
+    total_bits = [0] * 8  # 8개의 0 비트로 시작 (8비트 한 바이트씩)
+    
+    # 시작 비트부터 끝 비트까지 1을 채운다
+    for i in range(start_bit, start_bit + bit_length):
+        byte_index = i // 8
+        bit_index = i % 8
+        total_bits[byte_index] |= (1 << (7 - bit_index))  # 비트 위치에 1을 채운다
+
+    # 비트를 8비트씩 묶어서 출력할 수 있는 형식으로 변환 (hex 형태로)
+    return total_bits
 
 
 # ============================================
@@ -235,38 +251,43 @@ class CanAnalyzerApp:
         except FileNotFoundError:
             messagebox.showerror("에러", "car.png 파일을 찾을 수 없습니다.\n같은 폴더에 이미지를 넣어주세요.")
 
-    def analyze_can(self):
-        original = self.search_entry.get().strip()
-        if not original:
-            messagebox.showwarning("알림", "CAN 통신 한 줄을 입력하세요.")
-            return
+def analyze_can(self):
+    original = self.search_entry.get().strip()
+    if not original:
+        messagebox.showwarning("알림", "CAN 통신 한 줄을 입력하세요.")
+        return
 
-        # SG_ ... 에서 SAS_Angle만 쏙 뽑기
-        signal_name = extract_signal_name(original)
-        info = get_signal_info(signal_name)
-        print("여기띠: ", info)
+    # SG_ ... 에서 SAS_Angle만 쏙 뽑기
+    signal_name = extract_signal_name(original)
+    info = get_signal_info(signal_name)
+    print("여기띠: ", info)
 
-        if info:
-            can_id = info.get("can_id")
-            start_bit = info.get("start_bit")
-            bit_length = info.get("bit_length")
+    if info:
+        can_id = info.get("can_id")
+        start_bit = info.get("start_bit")
+        bit_length = info.get("bit_length")
 
-            # CAN ID는 그대로 표시
-            self.lbl_can_id.config(text=f"CAN ID: {can_id}")
-            self.lbl_can_id.pack(fill="x", pady=5)
+        # CAN ID는 그대로 표시
+        self.lbl_can_id.config(text=f"CAN ID: {can_id}")
+        self.lbl_can_id.pack(fill="x", pady=5)
 
-            # BIT는 8바이트 00 패턴으로 표시 (추후에 실제 데이터로 교체 가능)
-            bit_display = "00 00 00 00 00 00 00 00"
-            self.lbl_bit.config(text=f"BIT: {bit_display}")
-            self.lbl_bit.pack(fill="x", pady=5)
+        # 실제 비트 계산
+        bit_display = self.calculate_bits(start_bit, bit_length)
+        
+        # bit_display를 8바이트씩 보여주기 (HEX 형식)
+        bit_display_str = " ".join([f"{b:02X}" for b in bit_display])
+        
+        self.lbl_bit.config(text=f"BIT: {bit_display_str}")
+        self.lbl_bit.pack(fill="x", pady=5)
 
-            # 밑에 박스는 그대로 (초기 텍스트 유지)
-            # self.box1 / self.box2 건들지 않기
+        # 아래 박스는 그대로
+        self.box1.config(text=f"신호 이름: {signal_name}\nCAN ID: {can_id}")
+        self.box2.config(text=f"start_bit: {start_bit}\nbit_length: {bit_length}")
+    else:
+        self.lbl_can_id.pack_forget()
+        self.lbl_bit.pack_forget()
+        messagebox.showwarning("알림", f"'{signal_name}' 에 해당하는 신호를 찾을 수 없습니다.")
 
-        else:
-            self.lbl_can_id.pack_forget()
-            self.lbl_bit.pack_forget()
-            messagebox.showwarning("알림", f"'{signal_name}' 에 해당하는 신호를 찾을 수 없습니다.")
 
 
 
