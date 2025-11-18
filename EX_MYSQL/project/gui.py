@@ -16,8 +16,8 @@ def extract_signal_name(original_code: str) -> str:
     for sep in [":", " "]:
         idx = s.find(sep)
         if idx != -1:
-            return s[:idx]
-    return s
+            return s[:idx].strip()   # ⭐ 앞/뒤 공백 제거
+    return s.strip()
 
 # ============================================
 # DB 연결 함수
@@ -43,30 +43,31 @@ def parse_bits_from_original_code(original_code: str):
     → start_bit = 0, bit_length = 16
     """
     try:
-        # ':' 뒤쪽만 잘라서
         after_colon = original_code.split(":", 1)[1].strip()
-        # '@' 앞까지만 사용 → '0|16'
-        before_at = after_colon.split("@", 1)[0].strip()
+        before_at = after_colon.split("@", 1)[0].strip()  # '0|16'
         start_str, length_str = before_at.split("|")
         return int(start_str), int(length_str)
-    except Exception:
-        # 파싱 실패 시 기본값
+    except Exception as e:
+        print("[DEBUG] parse_bits 실패:", original_code, e)
         return None, None
 
 def calculate_bits(start_bit, bit_length):
     """
-    start_bit과 bit_length를 기반으로 실제 비트값을 계산.
-    예: start_bit=8, bit_length=8이면 0x08, 0x00 ... 이런 식으로 비트로 표시.
+    start_bit과 bit_length를 기반으로 간단히 8바이트 비트맵 생성
+    (ex: 0|8 → 0xFF 00 00 00 00 00 00 00 이런 느낌)
     """
-    total_bits = [0] * 8  # 8개의 0 비트로 시작 (8비트 한 바이트씩)
-    
-    # 비트 위치에 1을 채운다
+    total_bits = [0] * 8  # 8바이트
+
+    if start_bit is None or bit_length is None:
+        return total_bits
+
     for i in range(start_bit, start_bit + bit_length):
+        if i >= 64:   # 8바이트(64비트) 넘어가는 것은 무시
+            break
         byte_index = i // 8
         bit_index = i % 8
-        total_bits[byte_index] |= (1 << (7 - bit_index))  # 비트 위치에 1을 채운다
+        total_bits[byte_index] |= (1 << (7 - bit_index))
 
-    # 비트를 8비트씩 묶어서 출력할 수 있는 형식으로 변환 (HEX 형태로)
     return total_bits
 
 # ============================================
@@ -80,18 +81,30 @@ def get_signal_info(signal_name: str):
     try:
         cur = conn.cursor(dictionary=True)
 
-        # 디버깅용: 실제 파라미터가 어떻게 들어가는지 확인
-        print("[DEBUG] signal_name 파라미터:", repr(signal_name))
+        clean_name = signal_name.strip()
+        print("[DEBUG] signal_name 파라미터:", repr(signal_name), "→", repr(clean_name))
 
-        # 1) original_code에서 signal_name으로 한 줄 찾기 (부분 일치)
+        # original_code.signal_name 기준으로 부분 매칭
         query_oc1 = """
+            SELECT id, message_id, signal_name, original_code
+            FROM original_code
+            WHERE TRIM(signal_name) = TRIM(%s)
+            LIMIT 1;
+        """
+        cur.execute(query_oc1, (clean_name,))
+        oc_row = cur.fetchone()
+
+        # 정확 매칭 안 되면 LIKE로 한 번 더 시도
+        if not oc_row:
+            print("[DEBUG] 정확 매칭 실패 → LIKE 매칭 시도")
+            query_oc2 = """
                 SELECT id, message_id, signal_name, original_code
                 FROM original_code
                 WHERE signal_name LIKE %s
                 LIMIT 1;
             """
-        cur.execute(query_oc1, ('%' + signal_name + '%',))  # LIKE를 사용해서 부분 매칭
-        oc_row = cur.fetchone()
+            cur.execute(query_oc2, (f"%{clean_name}%",))
+            oc_row = cur.fetchone()
 
         if not oc_row:
             print("[DEBUG] 신호를 DB에서 찾을 수 없습니다.")
@@ -99,16 +112,15 @@ def get_signal_info(signal_name: str):
             conn.close()
             return None
 
-        # 4) original_code 문자열에서 start_bit / bit_length 파싱
-        start_bit, bit_length = parse_bits_from_original_code(oc_row["original_code"])
+        print("[DEBUG] 찾은 original_code row:", oc_row)
 
+        start_bit, bit_length = parse_bits_from_original_code(oc_row["original_code"])
         if start_bit is None or bit_length is None:
-            print("[DEBUG] original_code 파싱 실패:", oc_row["original_code"])
             cur.close()
             conn.close()
             return None
 
-        # 5) message_id로 messages에서 frame_id 조회 (있으면)
+        # message_id로 CAN ID 조회
         can_id = None
         msg_id = oc_row.get("message_id")
 
@@ -121,6 +133,7 @@ def get_signal_info(signal_name: str):
             """
             cur.execute(query_msg, (msg_id,))
             msg_row = cur.fetchone()
+            print("[DEBUG] messages 조회 결과:", msg_row)
             if msg_row:
                 can_id = msg_row["frame_id"]
 
@@ -138,7 +151,6 @@ def get_signal_info(signal_name: str):
         return None
 
 
-
 # ============================================
 # 클래스 정의 (CarPoint)
 # ============================================
@@ -148,7 +160,7 @@ class CarPoint:
         self.name = name
         self.x = x
         self.y = y
-        self.color = "red"  # 초기 색상
+        self.color = "red"
 
     def toggle_color(self):
         self.color = "green" if self.color == "red" else "red"
@@ -162,21 +174,17 @@ class CanAnalyzerApp:
         self.root.title("CAN 통신 해석기")
         self.root.geometry("1200x700")
 
-        # UI 레이아웃 설정 (좌/우 분할)
         self.setup_layout()
-        
-        # 초기 데이터 로드 및 캔버스 설정
         self.load_image_and_points()
 
     def setup_layout(self):
-        # --- 1. 왼쪽 패널 (컨트롤 및 결과) ---
         left_frame = tk.Frame(self.root, width=400, padx=20, pady=20)
         left_frame.pack(side="left", fill="y")
-        left_frame.pack_propagate(False)  # 크기 고정
+        left_frame.pack_propagate(False)
 
-        tk.Label(left_frame, text="~ CAN 통신 해석 ~", font=("Arial", 20, "bold")).pack(pady=(0, 30))
+        tk.Label(left_frame, text="~ CAN 통신 해석 ~",
+                 font=("Arial", 20, "bold")).pack(pady=(0, 30))
 
-        # 검색 영역
         search_frame = tk.Frame(left_frame)
         search_frame.pack(fill="x", pady=10)
 
@@ -185,13 +193,15 @@ class CanAnalyzerApp:
         self.search_entry = tk.Entry(search_frame, font=("Arial", 12))
         self.search_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
 
-        btn_analyze = tk.Button(search_frame, text="해석", command=self.analyze_can, bg="#f7eaea", width=8)
+        btn_analyze = tk.Button(search_frame, text="해석",
+                                command=self.analyze_can, bg="#f7eaea", width=8)
         btn_analyze.pack(side="left", padx=2)
 
-        btn_log = tk.Button(search_frame, text="로그", command=lambda: print("로그 버튼 클릭됨"), bg="#f7eaea", width=8)
+        btn_log = tk.Button(search_frame, text="로그",
+                            command=lambda: print("로그 버튼 클릭됨"),
+                            bg="#f7eaea", width=8)
         btn_log.pack(side="left", padx=2)
 
-        # 결과 표시 영역
         self.result_frame = tk.Frame(left_frame, pady=20)
         self.result_frame.pack(fill="x")
 
@@ -200,17 +210,18 @@ class CanAnalyzerApp:
         self.lbl_bit = tk.Label(self.result_frame, text="", bg="#f0f0f0",
                                 anchor="w", padx=10, pady=10, relief="solid", bd=1)
 
-        tk.Label(left_frame, text="").pack()  # 여백
+        tk.Label(left_frame, text="").pack()
 
         self.box1 = tk.Label(left_frame, text="DB에서 가져온 결과 1", bg="#f7eaea",
-                             height=10, relief="flat", anchor="nw", padx=10, pady=10, font=("Arial", 11))
+                             height=10, relief="flat", anchor="nw",
+                             padx=10, pady=10, font=("Arial", 11))
         self.box1.pack(fill="x", pady=10)
 
         self.box2 = tk.Label(left_frame, text="DB에서 가져온 결과 2", bg="#e0e0e0",
-                             height=10, relief="flat", anchor="nw", padx=10, pady=10, font=("Arial", 11))
+                             height=10, relief="flat", anchor="nw",
+                             padx=10, pady=10, font=("Arial", 11))
         self.box2.pack(fill="x", pady=10)
 
-        # --- 2. 오른쪽 패널 (자동차 이미지 캔버스) ---
         self.right_frame = tk.Frame(self.root, bg="white")
         self.right_frame.pack(side="right", fill="both", expand=True)
 
@@ -226,7 +237,8 @@ class CanAnalyzerApp:
             self.canvas_width = 800
             self.img_w, self.img_h = self.orig_image.size
             
-            self.canvas.create_image(self.canvas_width//2, self.img_h//2 + 20,
+            self.canvas.create_image(self.canvas_width//2,
+                                     self.img_h//2 + 20,
                                      image=self.tk_image, anchor="center")
             
             x = self.canvas_width // 2 + 15
@@ -259,36 +271,32 @@ class CanAnalyzerApp:
             messagebox.showwarning("알림", "CAN 통신 한 줄을 입력하세요.")
             return
 
-        # SG_ ... 에서 SAS_Angle만 쏙 뽑기
         signal_name = extract_signal_name(original)
+        print("[DEBUG] 추출된 signal_name:", repr(signal_name))
         info = get_signal_info(signal_name)
-        print("여기띠: ", info)
+        print("[DEBUG] get_signal_info 결과:", info)
 
         if info:
             can_id = info.get("can_id")
             start_bit = info.get("start_bit")
             bit_length = info.get("bit_length")
 
-            # CAN ID는 그대로 표시
             self.lbl_can_id.config(text=f"CAN ID: {can_id}")
             self.lbl_can_id.pack(fill="x", pady=5)
 
-            # 실제 비트 계산
-            bit_display = self.calculate_bits(start_bit, bit_length)
-            
-            # bit_display를 8바이트씩 보여주기 (HEX 형식)
-            bit_display_str = " ".join([f"{b:02X}" for b in bit_display])
-            
+            bit_display = calculate_bits(start_bit, bit_length)
+            bit_display_str = " ".join(f"{b:02X}" for b in bit_display)
+
             self.lbl_bit.config(text=f"BIT: {bit_display_str}")
             self.lbl_bit.pack(fill="x", pady=5)
 
-            # 아래 박스는 그대로
             self.box1.config(text=f"신호 이름: {signal_name}\nCAN ID: {can_id}")
             self.box2.config(text=f"start_bit: {start_bit}\nbit_length: {bit_length}")
         else:
             self.lbl_can_id.pack_forget()
             self.lbl_bit.pack_forget()
-            messagebox.showwarning("알림", f"'{signal_name}' 에 해당하는 신호를 찾을 수 없습니다.")
+            messagebox.showwarning("알림",
+                                   f"'{signal_name}' 에 해당하는 신호를 찾을 수 없습니다.")
 
     def draw_points(self):
         self.canvas.delete("dots")
