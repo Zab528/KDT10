@@ -182,7 +182,6 @@ class CanAnalyzerApp:
         self.root.geometry("1200x700")
 
         self.setup_layout()
-        self.load_image_and_points()
 
     def setup_layout(self):
         # Notebook 설정
