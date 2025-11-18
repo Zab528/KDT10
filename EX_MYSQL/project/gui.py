@@ -58,18 +58,16 @@ def calculate_bits(start_bit, bit_length):
     start_bit과 bit_length를 기반으로 실제 비트값을 계산.
     예: start_bit=8, bit_length=8이면 0x08, 0x00 ... 이런 식으로 비트로 표시.
     """
-    # 각 비트의 값을 8비트 단위로 나눈 후, bit_length가 끝나는 위치까지 1을 채운다.
     total_bits = [0] * 8  # 8개의 0 비트로 시작 (8비트 한 바이트씩)
     
-    # 시작 비트부터 끝 비트까지 1을 채운다
+    # 비트 위치에 1을 채운다
     for i in range(start_bit, start_bit + bit_length):
         byte_index = i // 8
         bit_index = i % 8
         total_bits[byte_index] |= (1 << (7 - bit_index))  # 비트 위치에 1을 채운다
 
-    # 비트를 8비트씩 묶어서 출력할 수 있는 형식으로 변환 (hex 형태로)
+    # 비트를 8비트씩 묶어서 출력할 수 있는 형식으로 변환 (HEX 형태로)
     return total_bits
-
 
 # ============================================
 # 신호 이름으로 CAN ID / start_bit / bit_length 조회
@@ -95,11 +93,14 @@ def get_signal_info(signal_name: str):
         cur.execute(query_oc1, (signal_name,))
         oc_row = cur.fetchone()
 
+        if not oc_row:
+            cur.close()
+            conn.close()
+            return None
 
         # 4) original_code 문자열에서 start_bit / bit_length 파싱
         start_bit, bit_length = parse_bits_from_original_code(oc_row["original_code"])
 
-        # 파싱 실패해도 최소한 디버깅 로그 남기기
         if start_bit is None or bit_length is None:
             print("[DEBUG] original_code 파싱 실패:", oc_row["original_code"])
             cur.close()
@@ -119,7 +120,6 @@ def get_signal_info(signal_name: str):
             """
             cur.execute(query_msg, (msg_id,))
             msg_row = cur.fetchone()
-            print("[DEBUG] messages 조회 결과:", msg_row)
             if msg_row:
                 can_id = msg_row["frame_id"]
 
@@ -287,9 +287,6 @@ class CanAnalyzerApp:
             self.lbl_can_id.pack_forget()
             self.lbl_bit.pack_forget()
             messagebox.showwarning("알림", f"'{signal_name}' 에 해당하는 신호를 찾을 수 없습니다.")
-
-
-
 
     def draw_points(self):
         self.canvas.delete("dots")
