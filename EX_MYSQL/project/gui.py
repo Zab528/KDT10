@@ -14,7 +14,7 @@ def get_conn():
         host="localhost",
         user="user1",
         password="user1",   # ← 너 비번
-        database="car_skill",      # ← 실제 DB 이름
+        database="car_skill"      # ← 실제 DB 이름
     )
 
 # ================================
