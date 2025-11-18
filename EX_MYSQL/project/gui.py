@@ -83,17 +83,18 @@ def get_signal_info(signal_name: str):
         # 디버깅용: 실제 파라미터가 어떻게 들어가는지 확인
         print("[DEBUG] signal_name 파라미터:", repr(signal_name))
 
-        # 1) original_code에서 signal_name으로 한 줄 찾기 (양쪽 공백 제거)
+        # 1) original_code에서 signal_name으로 한 줄 찾기 (부분 일치)
         query_oc1 = """
                 SELECT id, message_id, signal_name, original_code
                 FROM original_code
-                WHERE TRIM(signal_name) = TRIM(%s)
+                WHERE signal_name LIKE %s
                 LIMIT 1;
             """
-        cur.execute(query_oc1, (signal_name,))
+        cur.execute(query_oc1, ('%' + signal_name + '%',))  # LIKE를 사용해서 부분 매칭
         oc_row = cur.fetchone()
 
         if not oc_row:
+            print("[DEBUG] 신호를 DB에서 찾을 수 없습니다.")
             cur.close()
             conn.close()
             return None
@@ -135,6 +136,7 @@ def get_signal_info(signal_name: str):
     except Error as e:
         messagebox.showerror("DB 조회 에러", f"신호 정보를 조회하는 중 에러가 발생했습니다.\n\n{e}")
         return None
+
 
 
 # ============================================
