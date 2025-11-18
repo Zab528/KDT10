@@ -2,6 +2,70 @@ import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
 import math
+import mysql.connector
+from mysql.connector import Error
+
+# ============================================
+# original_code → 신호 이름 추출
+# 예: "SG_ Pas_Spkr_Rrh_Alarm : 60|2@..." → "Pas_Spkr_Rrh_Alarm"
+# ============================================
+def extract_signal_name(original_code: str) -> str:
+    s = original_code.strip()
+    if s.startswith("SG_"):
+        s = s[3:].lstrip()
+    for sep in [":", " "]:
+        idx = s.find(sep)
+        if idx != -1:
+            return s[:idx]
+    return s
+
+# ============================================
+# DB 연결 함수
+# ============================================
+def get_conn():
+    try:
+        conn = mysql.connector.connect(
+            host="172.30.1.87",
+            user="user1",
+            password="user1",
+            database="car_skill",
+            port=3306,
+            connection_timeout=5,
+        )
+        return conn
+    except Error as e:
+        messagebox.showerror("DB 접속 에러", f"DB에 접속할 수 없습니다.\n\n{e}")
+        return None
+
+# ============================================
+# 신호 이름으로 CAN ID / start_bit / bit_length 조회
+# ============================================
+def get_signal_info(signal_name: str):
+    conn = get_conn()
+    if conn is None:
+        return None
+
+    try:
+        cur = conn.cursor(dictionary=True)
+        query = """
+            SELECT 
+                m.frame_id AS can_id,
+                s.start_bit,
+                s.bit_length
+            FROM signals_info AS s
+            JOIN messages AS m
+              ON s.message_id = m.id
+            WHERE s.name = %s
+            LIMIT 1;
+        """
+        cur.execute(query, (signal_name,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        return row
+    except Error as e:
+        messagebox.showerror("DB 조회 에러", f"신호 정보를 조회하는 중 에러가 발생했습니다.\n\n{e}")
+        return None
 
 # ============================================
 # 클래스 정의 (CarPoint)
@@ -26,13 +90,6 @@ class CanAnalyzerApp:
         self.root.title("CAN 통신 해석기")
         self.root.geometry("1200x700")
 
-        # 데이터베이스 (임시)
-        self.db_results = {
-            "fgfg": {"CAN ID": 1532, "BIT": 10},
-            "abc": {"CAN ID": 2048, "BIT": 15},
-            "xyz": {"CAN ID": 1024, "BIT": 7},
-        }
-
         # UI 레이아웃 설정 (좌/우 분할)
         self.setup_layout()
         
@@ -45,10 +102,9 @@ class CanAnalyzerApp:
         left_frame.pack(side="left", fill="y")
         left_frame.pack_propagate(False)  # 크기 고정
 
-        # 타이틀
         tk.Label(left_frame, text="~ CAN 통신 해석 ~", font=("Arial", 20, "bold")).pack(pady=(0, 30))
 
-        # 검색 영역 프레임
+        # 검색 영역
         search_frame = tk.Frame(left_frame)
         search_frame.pack(fill="x", pady=10)
 
@@ -63,20 +119,23 @@ class CanAnalyzerApp:
         btn_log = tk.Button(search_frame, text="로그", command=lambda: print("로그 버튼 클릭됨"), bg="#f7eaea", width=8)
         btn_log.pack(side="left", padx=2)
 
-        # 결과 표시 영역 (Search Result)
+        # 결과 표시 영역
         self.result_frame = tk.Frame(left_frame, pady=20)
         self.result_frame.pack(fill="x")
 
-        self.lbl_can_id = tk.Label(self.result_frame, text="", bg="#f0f0f0", anchor="w", padx=10, pady=10, relief="solid", bd=1)
-        self.lbl_bit = tk.Label(self.result_frame, text="", bg="#f0f0f0", anchor="w", padx=10, pady=10, relief="solid", bd=1)
+        self.lbl_can_id = tk.Label(self.result_frame, text="", bg="#f0f0f0",
+                                   anchor="w", padx=10, pady=10, relief="solid", bd=1)
+        self.lbl_bit = tk.Label(self.result_frame, text="", bg="#f0f0f0",
+                                anchor="w", padx=10, pady=10, relief="solid", bd=1)
 
-        # 하단 큰 결과 박스들
-        tk.Label(left_frame, text="").pack() # 여백
-        
-        self.box1 = tk.Label(left_frame, text="DB에서 가져온 결과 1", bg="#f7eaea", height=10, relief="flat", anchor="nw", padx=10, pady=10, font=("Arial", 11))
+        tk.Label(left_frame, text="").pack()  # 여백
+
+        self.box1 = tk.Label(left_frame, text="DB에서 가져온 결과 1", bg="#f7eaea",
+                             height=10, relief="flat", anchor="nw", padx=10, pady=10, font=("Arial", 11))
         self.box1.pack(fill="x", pady=10)
 
-        self.box2 = tk.Label(left_frame, text="DB에서 가져온 결과 2", bg="#e0e0e0", height=10, relief="flat", anchor="nw", padx=10, pady=10, font=("Arial", 11))
+        self.box2 = tk.Label(left_frame, text="DB에서 가져온 결과 2", bg="#e0e0e0",
+                             height=10, relief="flat", anchor="nw", padx=10, pady=10, font=("Arial", 11))
         self.box2.pack(fill="x", pady=10)
 
         # --- 2. 오른쪽 패널 (자동차 이미지 캔버스) ---
@@ -85,24 +144,19 @@ class CanAnalyzerApp:
 
         self.canvas = tk.Canvas(self.right_frame, bg="white", highlightthickness=0)
         self.canvas.pack(fill="both", expand=True)
-        
-        # 클릭 이벤트 바인딩
         self.canvas.bind("<Button-1>", self.on_canvas_click)
 
     def load_image_and_points(self):
         try:
-            # 이미지 로드
             self.orig_image = Image.open("car.png")
             self.tk_image = ImageTk.PhotoImage(self.orig_image)
             
-            # 이미지 중앙 정렬을 위한 좌표 계산
-            self.canvas_width = 800 # 대략적인 캔버스 폭
+            self.canvas_width = 800
             self.img_w, self.img_h = self.orig_image.size
             
-            # 이미지 그리기
-            self.canvas.create_image(self.canvas_width//2, self.img_h//2 + 20, image=self.tk_image, anchor="center")
+            self.canvas.create_image(self.canvas_width//2, self.img_h//2 + 20,
+                                     image=self.tk_image, anchor="center")
             
-            # 점 데이터 초기화 (Streamlit 코드의 좌표 기반)
             x = self.canvas_width // 2 + 15
             
             self.points = [
@@ -128,27 +182,36 @@ class CanAnalyzerApp:
             messagebox.showerror("에러", "car.png 파일을 찾을 수 없습니다.\n같은 폴더에 이미지를 넣어주세요.")
 
     def analyze_can(self):
-        val = self.search_entry.get()
-        result = self.db_results.get(val)
+        original = self.search_entry.get().strip()
+        if not original:
+            messagebox.showwarning("알림", "CAN 통신 한 줄을 입력하세요.")
+            return
 
-        if result:
-            self.lbl_can_id.config(text=f"CAN ID: {result['CAN ID']}")
-            self.lbl_can_id.pack(fill="x", pady=5) # 결과가 있을 때만 보이게 다시 팩
-            
-            self.lbl_bit.config(text=f"BIT: {result['BIT']}")
+        signal_name = extract_signal_name(original)
+        info = get_signal_info(signal_name)
+
+        if info:
+            can_id = info.get("can_id")
+            start_bit = info.get("start_bit")
+            bit_length = info.get("bit_length")
+
+            self.lbl_can_id.config(text=f"CAN ID: {can_id}")
+            self.lbl_can_id.pack(fill="x", pady=5)
+
+            self.lbl_bit.config(text=f"BIT: {start_bit} | {bit_length}")
             self.lbl_bit.pack(fill="x", pady=5)
+
+            self.box1.config(text=f"신호 이름: {signal_name}\nCAN ID: {can_id}")
+            self.box2.config(text=f"start_bit: {start_bit}\nbit_length: {bit_length}")
         else:
-            self.lbl_can_id.pack_forget() # 결과 없으면 숨김
+            self.lbl_can_id.pack_forget()
             self.lbl_bit.pack_forget()
-            messagebox.showwarning("알림", "검색 결과가 없습니다.")
+            messagebox.showwarning("알림", f"'{signal_name}' 에 해당하는 신호를 찾을 수 없습니다.")
 
     def draw_points(self):
-        # 기존 점들 지우기 (태그 이용)
         self.canvas.delete("dots")
-        
-        r = 10 # 점 반지름
+        r = 10
         for p in self.points:
-            # 원 그리기 (x1, y1, x2, y2)
             self.canvas.create_oval(
                 p.x - r, p.y - r, p.x + r, p.y + r,
                 fill=p.color, outline="black", tags="dots"
@@ -159,9 +222,8 @@ class CanAnalyzerApp:
         clicked = False
         
         for p in self.points:
-            # 클릭 좌표와 점 사이의 거리 계산 (피타고라스)
             distance = math.hypot(p.x - x, p.y - y)
-            if distance < 15: # 반지름보다 약간 여유있게 클릭 판정
+            if distance < 15:
                 p.toggle_color()
                 clicked = True
         
