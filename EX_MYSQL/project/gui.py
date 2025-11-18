@@ -40,7 +40,7 @@ def get_conn():
 # ============================================
 # 신호 이름으로 CAN ID / start_bit / bit_length 조회
 # ============================================
-ddef get_signal_info(signal_name: str):
+def get_signal_info(signal_name: str):
     conn = get_conn()
     if conn is None:
         return None
