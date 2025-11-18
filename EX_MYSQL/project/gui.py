@@ -241,7 +241,7 @@ class CanAnalyzerApp:
         # SG_ ... 에서 SAS_Angle만 쏙 뽑기
         signal_name = extract_signal_name(original)
         info = get_signal_info(signal_name)
-        print("여기띠: ",info)
+        print("여기띠: ",signal_name)
 
         if info:
             can_id = info.get("can_id")
