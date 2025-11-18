@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
+from tkinter import ttk  # Notebook 위젯을 사용하기 위한 임포트
 from PIL import Image, ImageTk
 import math
 import mysql.connector
@@ -75,8 +76,6 @@ def calculate_bits(start_bit, bit_length):
         total_bits[byte_index] |= (1 << bit_index)
 
     return total_bits
-
-
 
 # ============================================
 # 신호 이름으로 CAN ID / start_bit / bit_length 조회
@@ -186,30 +185,55 @@ class CanAnalyzerApp:
         self.load_image_and_points()
 
     def setup_layout(self):
-        left_frame = tk.Frame(self.root, width=400, padx=20, pady=20)
+        # Notebook 설정
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill="both", expand=True)
+
+        # 1번 시트
+        self.tab1 = ttk.Frame(self.notebook)
+        self.notebook.add(self.tab1, text="시트 1")
+
+        # 2번, 3번 시트 (빈 시트 또는 형식만 구분)
+        self.tab2 = ttk.Frame(self.notebook)
+        self.notebook.add(self.tab2, text="시트 2")
+        self.tab3 = ttk.Frame(self.notebook)
+        self.notebook.add(self.tab3, text="시트 3")
+
+        # 시트 1 레이아웃 설정
+        self.setup_tab1_layout()
+
+    def setup_tab1_layout(self):
+        left_frame = tk.Frame(self.tab1, width=400, padx=20, pady=20)
         left_frame.pack(side="left", fill="y")
         left_frame.pack_propagate(False)
 
         tk.Label(left_frame, text="~ CAN 통신 해석 ~",
                  font=("Arial", 20, "bold")).pack(pady=(0, 30))
 
+        # DB에서 원본 코드 가져와서 리스트로 나열
+        self.listbox = tk.Listbox(left_frame, height=20, width=50)
+        self.listbox.pack(padx=10, pady=10)
+
+        self.load_original_codes()
+
+        self.listbox.bind("<ButtonRelease-1>", self.on_listbox_select)
+
+        # 검색, 해석 버튼
         search_frame = tk.Frame(left_frame)
         search_frame.pack(fill="x", pady=10)
 
         tk.Label(search_frame, text="CAN 통신값 검색").pack(anchor="w")
-        
+
         self.search_entry = tk.Entry(search_frame, font=("Arial", 12))
         self.search_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
 
-        btn_analyze = tk.Button(search_frame, text="해석",
-                                command=self.analyze_can, bg="#f7eaea", width=8)
+        btn_analyze = tk.Button(search_frame, text="해석", command=self.analyze_can, bg="#f7eaea", width=8)
         btn_analyze.pack(side="left", padx=2)
 
-        btn_log = tk.Button(search_frame, text="로그",
-                            command=lambda: print("로그 버튼 클릭됨"),
-                            bg="#f7eaea", width=8)
+        btn_log = tk.Button(search_frame, text="로그", command=lambda: print("로그 버튼 클릭됨"), bg="#f7eaea", width=8)
         btn_log.pack(side="left", padx=2)
 
+        # 결과 표시 영역
         self.result_frame = tk.Frame(left_frame, pady=20)
         self.result_frame.pack(fill="x")
 
@@ -218,60 +242,29 @@ class CanAnalyzerApp:
         self.lbl_bit = tk.Label(self.result_frame, text="", bg="#f0f0f0",
                                 anchor="w", padx=10, pady=10, relief="solid", bd=1)
 
-        tk.Label(left_frame, text="").pack()
+    def load_original_codes(self):
+        # DB에서 원본 코드를 가져와서 리스트박스에 추가
+        conn = get_conn()
+        if conn:
+            try:
+                cur = conn.cursor(dictionary=True)
+                query = "SELECT original_code FROM original_code LIMIT 20;"
+                cur.execute(query)
+                rows = cur.fetchall()
+                for row in rows:
+                    self.listbox.insert(tk.END, row["original_code"])
+                cur.close()
+                conn.close()
+            except Error as e:
+                messagebox.showerror("DB 조회 에러", f"DB에서 데이터를 가져오는 중 에러가 발생했습니다.\n\n{e}")
 
-        self.box1 = tk.Label(left_frame, text="DB에서 가져온 결과 1", bg="#f7eaea",
-                             height=10, relief="flat", anchor="nw",
-                             padx=10, pady=10, font=("Arial", 11))
-        self.box1.pack(fill="x", pady=10)
-
-        self.box2 = tk.Label(left_frame, text="DB에서 가져온 결과 2", bg="#e0e0e0",
-                             height=10, relief="flat", anchor="nw",
-                             padx=10, pady=10, font=("Arial", 11))
-        self.box2.pack(fill="x", pady=10)
-
-        self.right_frame = tk.Frame(self.root, bg="white")
-        self.right_frame.pack(side="right", fill="both", expand=True)
-
-        self.canvas = tk.Canvas(self.right_frame, bg="white", highlightthickness=0)
-        self.canvas.pack(fill="both", expand=True)
-        self.canvas.bind("<Button-1>", self.on_canvas_click)
-
-    def load_image_and_points(self):
-        try:
-            self.orig_image = Image.open("car.png")
-            self.tk_image = ImageTk.PhotoImage(self.orig_image)
-            
-            self.canvas_width = 800
-            self.img_w, self.img_h = self.orig_image.size
-            
-            self.canvas.create_image(self.canvas_width//2,
-                                     self.img_h//2 + 20,
-                                     image=self.tk_image, anchor="center")
-            
-            x = self.canvas_width // 2 + 15
-            
-            self.points = [
-                CarPoint("FL_Corner", "Front_Left_Sensor", x - 90, 45),
-                CarPoint("FR_Corner", "Front_Right_Sensor", x + 90, 45),
-                CarPoint("Side_L", "Side_Mirror_L", x - 130, 220),
-                CarPoint("Side_R", "Side_Mirror_R", x + 130, 220),
-                CarPoint("Seat_FL", "Driver_Seat", x - 45, 290),
-                CarPoint("Seat_FR", "Passenger_Seat", x + 45, 290),
-                CarPoint("Door_FL", "Door_Front_L", x - 120, 310),
-                CarPoint("Door_FR", "Door_Front_R", x + 120, 310),
-                CarPoint("Seat_RL", "Rear_Seat_L", x - 45, 400),
-                CarPoint("Seat_RR", "Rear_Seat_R", x + 45, 400),
-                CarPoint("Door_RL", "Door_Rear_L", x - 120, 430),
-                CarPoint("Door_RR", "Door_Rear_R", x + 120, 430),
-                CarPoint("RL_Corner", "Rear_Left_Sensor", x - 100, 570),
-                CarPoint("RR_Corner", "Rear_Right_Sensor", x + 100, 570),
-            ]
-            
-            self.draw_points()
-
-        except FileNotFoundError:
-            messagebox.showerror("에러", "car.png 파일을 찾을 수 없습니다.\n같은 폴더에 이미지를 넣어주세요.")
+    def on_listbox_select(self, event):
+        # 클릭한 항목을 검색 필드에 자동 입력
+        selection = self.listbox.curselection()
+        if selection:
+            selected_code = self.listbox.get(selection[0])
+            self.search_entry.delete(0, tk.END)
+            self.search_entry.insert(0, selected_code)
 
     def analyze_can(self):
         original = self.search_entry.get().strip()
@@ -297,35 +290,11 @@ class CanAnalyzerApp:
 
             self.lbl_bit.config(text=f"BIT: {bit_display_str}")
             self.lbl_bit.pack(fill="x", pady=5)
-
-            
         else:
             self.lbl_can_id.pack_forget()
             self.lbl_bit.pack_forget()
             messagebox.showwarning("알림",
                                    f"'{signal_name}' 에 해당하는 신호를 찾을 수 없습니다.")
-
-    def draw_points(self):
-        self.canvas.delete("dots")
-        r = 10
-        for p in self.points:
-            self.canvas.create_oval(
-                p.x - r, p.y - r, p.x + r, p.y + r,
-                fill=p.color, outline="black", tags="dots"
-            )
-
-    def on_canvas_click(self, event):
-        x, y = event.x, event.y
-        clicked = False
-        
-        for p in self.points:
-            distance = math.hypot(p.x - x, p.y - y)
-            if distance < 15:
-                p.toggle_color()
-                clicked = True
-        
-        if clicked:
-            self.draw_points()
 
 # ============================================
 # 실행
