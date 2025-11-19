@@ -11,8 +11,8 @@ from mysql.connector import Error
 # ⚙️ DB 설정 (통합)
 # ============================================
 MYSQL_HOST = "172.30.1.87"
-MYSQL_USER = "user6"
-MYSQL_PASSWORD = "user6"  # 실제 비밀번호로 변경
+MYSQL_USER = "user5"
+MYSQL_PASSWORD = "user5"  # 실제 비밀번호로 변경
 DB_NAME = "car_skill"
 MYSQL_PORT = 3306
 
