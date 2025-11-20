@@ -12,7 +12,7 @@ select * from employees.employees
 -- ----------------------------------------------------------
 select gender, count(*) 'CNT'
 from employees
-group by gender
+group by gender;
 
 
 
@@ -25,7 +25,7 @@ select title, count(title)
 from employees as em
 INNER JOIN titles as ti
 ON em.emp_no = ti.emp_no
-group by title
+group by title;
 
 
 
@@ -37,7 +37,7 @@ select dept_no, count(dept_no)
 from employees as em
 INNER JOIN dept_emp as de
 ON em.emp_no = de.emp_no
-group by dept_no
+group by dept_no;
 
 
 -- ----------------------------------------------------------
@@ -48,7 +48,7 @@ select dept_no, count(dept_no)
 from employees as em
 INNER JOIN dept_emp as de
 ON em.emp_no = de.emp_no
-group by dept_no
+group by dept_no;
 
 
 -- ----------------------------------------------------------
@@ -59,7 +59,7 @@ select title, salary
 from titles as ti
 INNER JOIN salaries as sl
 ON ti.emp_no = sl.emp_no
-group by title, salary
+group by title, salary;
 
 
 -- ----------------------------------------------------------
@@ -68,7 +68,7 @@ group by title, salary
 -- ----------------------------------------------------------
 select year(hire_date), count(*)
 from employees
-group by year(hire_date)
+group by year(hire_date);
 
 
 -- ----------------------------------------------------------
@@ -79,7 +79,7 @@ select dept_no, gender, count(*)
 from employees as em
 INNER JOIN dept_emp as de
 ON em.emp_no = de.emp_no
-group by dept_no, gender
+group by dept_no, gender;
 
 
 -- ----------------------------------------------------------
@@ -90,7 +90,7 @@ select dept_no, (to_date-from_date)
 from employees as em
 INNER JOIN dept_emp as de
 ON em.emp_no = de.emp_no
-group by dept_no, (to_date-from_date)
+group by dept_no, (to_date-from_date);
 
 
 -- ----------------------------------------------------------
@@ -101,7 +101,7 @@ select title, salary
 from titles as tl
 INNER JOIN salaries as sl
 ON tl.emp_no = sl.emp_no
-group by title, salary
+group by title, salary;
 
 
 
@@ -113,4 +113,4 @@ select dept_no, count(*) "CNT"
 from employees as em
 INNER JOIN dept_emp as de
 ON em.emp_no = de.emp_no
-group by dept_no
+group by dept_no;
