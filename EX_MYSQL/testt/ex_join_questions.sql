@@ -28,7 +28,7 @@ ON em.emp_no = de.emp_no;
 -- J3. 직원의 현재 직급과 현재 급여
 -- 테이블: employees.employees, titles, salaries
 -- ----------------------------------------------------------
-select tl.title, sl.salary
+select emp_no, tl.title, sl.salary
 from employees as em
 INNER JOIN titles as tl ON em.emp_no = tl.emp_no
 INNER JOIN salaries as sl ON em.emp_no = sl.emp_no;
@@ -39,6 +39,12 @@ INNER JOIN salaries as sl ON em.emp_no = sl.emp_no;
 -- J4. 부서별 평균 급여 (60,000 이상인 부서만)
 -- 테이블: employees.salaries, departments
 -- ----------------------------------------------------------
+select dept_no, salary
+from dept_emp as de
+INNER JOIN salaries as sl
+ON de.emp_no = sl.emp_no
+where salary >= 60000
+group by dept_no, salary;
 
 
 
