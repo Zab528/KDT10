@@ -8,6 +8,10 @@ use employees;
 -- J1. 직원의 이름과 현재 소속 부서명
 -- 테이블: employees.employees, departments
 -- ----------------------------------------------------------
+select first_name, dept_no
+from employees as em
+INNER JOIN dept_emp as de
+ON em.emp_no = de.emp_no;
 
 
 
@@ -15,13 +19,19 @@ use employees;
 -- J2. 현재 부서 관리자 정보
 -- 테이블: employees.employees, departments,dept_manager
 -- ----------------------------------------------------------
-
-
+select *
+from employees as em
+INNER JOIN dept_manager as de
+ON em.emp_no = de.emp_no;
 
 -- ----------------------------------------------------------
 -- J3. 직원의 현재 직급과 현재 급여
 -- 테이블: employees.employees, titles, salaries
 -- ----------------------------------------------------------
+select tl.title, sl.salary
+from employees as em
+INNER JOIN titles as tl ON em.emp_no = tl.emp_no
+INNER JOIN salaries as sl ON em.emp_no = sl.emp_no;
 
 
 
