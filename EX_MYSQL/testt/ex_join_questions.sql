@@ -28,7 +28,7 @@ ON em.emp_no = de.emp_no;
 -- J3. 직원의 현재 직급과 현재 급여
 -- 테이블: employees.employees, titles, salaries
 -- ----------------------------------------------------------
-select emp_no, tl.title, sl.salary
+select em.emp_no, tl.title, sl.salary
 from employees as em
 INNER JOIN titles as tl ON em.emp_no = tl.emp_no
 INNER JOIN salaries as sl ON em.emp_no = sl.emp_no;
@@ -52,20 +52,32 @@ group by dept_no, salary;
 -- J5. 'Sales' 부서에 속한 현재 직원 목록
 -- 테이블: employees.employees, departments
 -- ----------------------------------------------------------
-
-
+select dept_no, count(*)
+from employees as em
+INNER JOIN dept_emp as de
+ON em.emp_no = de.emp_no
+where dept_no = 'd007'
 
 -- ----------------------------------------------------------
 -- J6. 같은 부서에 속한 직원 
 -- 테이블: employees.employees, departments
 -- ----------------------------------------------------------
-
+select dept_no, count(*)
+from employees as em
+INNER JOIN dept_emp as de
+ON em.emp_no = de.emp_no
+group by dept_no
 
 
 -- ----------------------------------------------------------
 -- J7. 관리자별 담당 부서 직원 수
 -- 테이블: employees.dept_manager, employees, departments
 -- ----------------------------------------------------------
+select dept_no, count(*)
+from dept_manager as dm
+INNER JOIN employees as em
+ON dm.emp_no = em.emp_no
+group by dept_no
 
 
 
@@ -73,6 +85,9 @@ group by dept_no, salary;
 -- J8. 직급 변경 이력이 있는 직원
 -- 테이블: employees.employees, titles
 -- ----------------------------------------------------------
+select *
+from titles
+where to_date != '9999-01-01'
 
 
 
@@ -80,10 +95,18 @@ group by dept_no, salary;
 -- J9. 같은 급여를 받는 직원 
 -- 테이블: employees.salaries, employees
 -- ----------------------------------------------------------
-
+select salary, count(*)
+from employees as em
+INNER JOIN salaries as sl
+ON em.emp_no = sl.emp_no
+group by salary
 
 -- ----------------------------------------------------------
 -- J10. 직원별 최근 급여 이력만 조회
 -- 테이블: employees.employees, salaries
 -- ----------------------------------------------------------
-
+select salary, to_date
+from employees as em
+INNER JOIN salaries as sl
+ON em.emp_no = sl.emp_no
+where year(to_date) > 2000
