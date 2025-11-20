@@ -59,17 +59,23 @@ where emp_no IN (
 -- S5. 각 직원의 최대 급여와 현재 급여
 -- 테이블: employees.employees, salaries
 -- ----------------------------------------------------------
-
+select * from employees
+where emp_no IN (
+    select emp_no FROM salaries
+    where salary >= (
+        select max(salary) FROM salaries
+    )
+);
 
 
 -- ----------------------------------------------------------
 -- S6. 특정 직원(10001)과 같은 급여를 받는 직원들
 -- 테이블: employees.employees, salaries
 -- ----------------------------------------------------------
-select *
-from employees
-where emp_no in (
-    select emp_no from salaries
+select * from employees
+where emp_no IN (
+    select emp_no FROM salaries
+    where salary = '88958'
 );
 
 
