@@ -8,25 +8,51 @@ use employees;
 -- S1. 전체 평균 급여보다 많이 받는 직원
 -- 테이블: employees.employees, salaries
 -- ----------------------------------------------------------
+select *
+FROM employees
+where where emp_no IN (
+    select emp_no FROM salaries
+    where salary > (
+        select AVG(salary) FROM salaries
+    )
+);
 
 
 -- ----------------------------------------------------------
 -- S2. 'Sales' 부서에 속한 직원들
--- 테이블: employees.employees, departments
+-- 테이블: employees.employees, dept_emp
 -- ----------------------------------------------------------
+select *
+from employees
+where emp_no in (
+    select emp_no from dept_emp
+    where dept_no = 'd007'
+);
 
 
 -- ----------------------------------------------------------
 -- S3. 급여 기록이 한 번도 없는 직원 
 -- 테이블: employees.employees
 -- ----------------------------------------------------------
+select *
+from employees
+where emp_no not in (
+    select emp_no from salaries
+);
 
 
 -- ----------------------------------------------------------
 -- S4. 부서별 평균 급여가 전체 평균보다 높은 부서
--- 테이블: employees.salaries, departments
+-- 테이블: employees.salaries, dept_emp
 -- ----------------------------------------------------------
-
+select *
+from dept_emp
+where emp_no IN (
+    select emp_no FROM salaries
+    where salary > (
+        select AVG(salary) FROM salaries
+    )
+);
 
 
 -- ----------------------------------------------------------
@@ -35,11 +61,16 @@ use employees;
 -- ----------------------------------------------------------
 
 
+
 -- ----------------------------------------------------------
 -- S6. 특정 직원(10001)과 같은 급여를 받는 직원들
 -- 테이블: employees.employees, salaries
 -- ----------------------------------------------------------
-
+select *
+from employees
+where emp_no in (
+    select emp_no from salaries
+);
 
 
 -- ----------------------------------------------------------
