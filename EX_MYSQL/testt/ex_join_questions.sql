@@ -56,7 +56,7 @@ select dept_no, count(*)
 from employees as em
 INNER JOIN dept_emp as de
 ON em.emp_no = de.emp_no
-where dept_no = 'd007'
+where dept_no = 'd007';
 
 -- ----------------------------------------------------------
 -- J6. 같은 부서에 속한 직원 
@@ -66,7 +66,7 @@ select dept_no, count(*)
 from employees as em
 INNER JOIN dept_emp as de
 ON em.emp_no = de.emp_no
-group by dept_no
+group by dept_no;
 
 
 -- ----------------------------------------------------------
@@ -77,7 +77,7 @@ select dept_no, count(*)
 from dept_manager as dm
 INNER JOIN employees as em
 ON dm.emp_no = em.emp_no
-group by dept_no
+group by dept_no;
 
 
 
@@ -87,7 +87,7 @@ group by dept_no
 -- ----------------------------------------------------------
 select *
 from titles
-where to_date != '9999-01-01'
+where to_date != '9999-01-01';
 
 
 
@@ -99,7 +99,7 @@ select salary, count(*)
 from employees as em
 INNER JOIN salaries as sl
 ON em.emp_no = sl.emp_no
-group by salary
+group by salary;
 
 -- ----------------------------------------------------------
 -- J10. 직원별 최근 급여 이력만 조회
@@ -109,4 +109,4 @@ select salary, to_date
 from employees as em
 INNER JOIN salaries as sl
 ON em.emp_no = sl.emp_no
-where year(to_date) > 2000
+where year(to_date) > 2000;
