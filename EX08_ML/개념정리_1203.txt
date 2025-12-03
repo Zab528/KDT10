@@ -1,0 +1,4 @@
+CPU - 사람의 뇌, 연산, 1번 1개 처리
+Program - 한글, VSCODE : HDD
+Process - 클릭 실행 => 메모리
+Processor
