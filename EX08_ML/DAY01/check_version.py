@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib as ma
 import seaborn as sns
 
-
+## 설치 패키지별 버전 출력
 print(f'pandas      v.{pd.__version__}')
 print(f'scikitlearn v.{sk.__version__}')
 print(f'numpy       v.{np.__version__}')
