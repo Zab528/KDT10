@@ -1,0 +1,51 @@
+df = pd.DataFrame({
+    "job": [
+        "office", "office", "office", "office",
+        "engineer", "engineer", "engineer", "engineer",
+        "teacher", "teacher", "teacher", "teacher"
+    ],
+    "city": [
+        "Seoul", "Seoul", "Busan", "Busan",
+        "Seoul", "Busan", "Seoul", "Busan",
+        "Incheon", "Incheon", "Seoul", "Busan"
+    ],
+    "age": [25, 30, 45, 38, 40, 42, 36, 33, 28, 39, 41, 35],
+    "high_income": [0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0]
+})
+
+
+
+# ==================================================
+# 4. Binary Encoding (LabelEncoder + 비트 분해)
+#     범주 → LabelEncoder로 정수 → 이진수로 분해 → 여러 컬럼으로
+# ==================================================
+X_train_cat_bin = X_train_cat.copy()
+X_test_cat_bin  = X_test_cat.copy()
+
+for col in cat_cols:
+    le = LabelEncoder()
+    train_codes = le.fit_transform(X_train_cat_bin[col])
+    test_codes  = le.transform(X_test_cat_bin[col])
+
+    n_classes = len(le.classes_)
+    n_bits = int(np.ceil(np.log2(max(n_classes, 2))))  # 최소 1비트
+
+    for bit in range(n_bits):
+        bit_col = f"{col}_bit{bit}"
+        X_train_cat_bin[bit_col] = (train_codes >> bit) & 1
+        X_test_cat_bin[bit_col]  = (test_codes  >> bit) & 1
+
+    # 원래 범주형 컬럼 제거 (선택 사항)
+    X_train_cat_bin = X_train_cat_bin.drop(columns=[col])
+    X_test_cat_bin  = X_test_cat_bin.drop(columns=[col])
+
+X_train_bin = pd.concat([X_train_cat_bin, X_train_num], axis=1)
+X_test_bin  = pd.concat([X_test_cat_bin,  X_test_num],  axis=1)
+
+
+print("=== [4] Binary Encoding ===")
+print("Original shape:", X.shape, end=' ====> 인코딩 후 ')
+print("Train shape:", X_train_bin.shape, end='  ')
+print("Test  shape:", X_test_bin.shape)
+
+display(X.head(2), X_train_bin.head(2))
