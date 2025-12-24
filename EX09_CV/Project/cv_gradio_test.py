@@ -3,10 +3,6 @@ import numpy as np
 import cv2
 import joblib
 
-FACE_CASCADE = cv2.CascadeClassifier(
-    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-)
-
 # =========================
 # 1) 모델 로드
 # =========================
@@ -45,108 +41,49 @@ def preprocess_for_model(img_rgb: np.ndarray) -> np.ndarray:
     x = img_bgr.reshape(1, -1)
     return x
 
-def detect_face_and_draw(img_rgb: np.ndarray):
-    if img_rgb is None:
-        return None, None
-
-    # RGB → BGR
-    img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
-    gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-
-    faces = FACE_CASCADE.detectMultiScale(
-        gray,
-        scaleFactor=1.2,
-        minNeighbors=5,
-        minSize=(60, 60)
-    )
-
-    if len(faces) == 0:
-        return img_rgb, None
-
-    # 가장 큰 얼굴 하나 선택
-    x, y, w, h = max(faces, key=lambda f: f[2]*f[3])
-
-    # 네모 박스 그리기
-    cv2.rectangle(
-        img_bgr,
-        (x, y), (x+w, y+h),
-        (0, 255, 0), 2
-    )
-
-    # 얼굴 crop
-    face_crop = img_bgr[y:y+h, x:x+w]
-
-    # 다시 RGB로
-    img_boxed = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-
-    return img_boxed, face_crop
-
-
 # =========================
 # 3) 예측 함수
 # =========================
-def detect_face_and_draw(img_rgb: np.ndarray):
-    if img_rgb is None:
-        return None, None
+def predict_ethnicity(image):
+    if image is None:
+        return "이미지를 업로드하거나 웹캠으로 촬영한 뒤 분석 실행을 눌러주세요.", "-", "-"
 
-    # RGB → BGR
-    img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
-    gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+    x = preprocess_for_model(image)
+    pred = model.predict(x)[0]               # 'white'/'yellow'/'black' 예상
+    proba = model.predict_proba(x)[0]        # 클래스 순서는 model.classes_ 기준
 
-    faces = FACE_CASCADE.detectMultiScale(
-        gray,
-        scaleFactor=1.2,
-        minNeighbors=5,
-        minSize=(60, 60)
-    )
+    pred_kr = LABEL_MAP.get(str(pred), str(pred))
 
-    if len(faces) == 0:
-        return img_rgb, None
+    # 확률도 같이 보여주기 (원하면 제거 가능)
+    classes = [LABEL_MAP.get(c, c) for c in model.classes_]
+    proba_text = ", ".join([f"{cls}:{p*100:.1f}%" for cls, p in zip(classes, proba)])
 
-    # 가장 큰 얼굴 하나 선택
-    x, y, w, h = max(faces, key=lambda f: f[2]*f[3])
-
-    # 네모 박스 그리기
-    cv2.rectangle(
-        img_bgr,
-        (x, y), (x+w, y+h),
-        (0, 255, 0), 2
-    )
-
-    # 얼굴 crop
-    face_crop = img_bgr[y:y+h, x:x+w]
-
-    # 다시 RGB로
-    img_boxed = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-
-    return img_boxed, face_crop
-
+    return pred_kr, proba_text, str(model.classes_)
 
 # =========================
 # 4) Gradio UI
 # =========================
-with gr.Blocks(title="인종(피부톤) 분류") as demo:
-    gr.Markdown("## 얼굴 인종(피부톤) 분류 – 얼굴 검출 기반")
+with gr.Blocks(title="인종(피부톤) 분류: 백인/황인/흑인") as demo:
+    gr.Markdown("## 얼굴 이미지 인종(피부톤) 분류 (백인/황인/흑인)\n- 업로드 또는 웹캠 촬영 후 **분석 실행**을 누르세요.")
 
     with gr.Row():
         with gr.Column(scale=1):
             img_in = gr.Image(
                 label="이미지 업로드 / 웹캠",
                 type="numpy",
-                sources=["upload", "webcam"]
+                sources=["upload", "webcam"]  # ✅ 웹캠 포함
             )
             btn = gr.Button("분석 실행")
 
         with gr.Column(scale=1):
-            img_out = gr.Image(label="얼굴 검출 결과")
             out_pred = gr.Textbox(label="예측 결과", interactive=False)
             out_proba = gr.Textbox(label="클래스별 확률", interactive=False)
-            out_classes = gr.Textbox(label="model.classes_", interactive=False)
+            out_classes = gr.Textbox(label="model.classes_ (참고용)", interactive=False)
 
     btn.click(
-        fn=predict_ethnicity_with_face,
+        fn=predict_ethnicity,
         inputs=img_in,
-        outputs=[img_out, out_pred, out_proba, out_classes]
+        outputs=[out_pred, out_proba, out_classes]
     )
 
 demo.launch()
