@@ -78,7 +78,7 @@ def predict_dummy(image):
     # (형식상 feature 추출만 호출)
     features = extract_features(image)
 
-    GENDER_MAP = {0: "남성", 1: "여성"}
+    #GENDER_MAP = {0: "남성", 1: "여성"}
 
     # 더미 예측값
     ethnicity = random.choice(["Asian", "Caucasian", "African"])
