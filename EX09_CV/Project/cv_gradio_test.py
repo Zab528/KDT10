@@ -54,7 +54,7 @@ def predict_ethnicity(image):
 
     pred_kr = LABEL_MAP.get(str(pred), str(pred))
 
-    # 확률도 같이 보여주기 (원하면 제거 가능)
+    # 확률 보여주기
     classes = [LABEL_MAP.get(c, c) for c in model.classes_]
     proba_text = ", ".join([f"{cls}:{p*100:.1f}%" for cls, p in zip(classes, proba)])
 
