@@ -8,8 +8,8 @@ import face_recognition
 # ======================================================
 ## 각자 만든 모델 로드
 # ======================================================
-#gender_model = joblib.load("./svc_rbf_model.pkl")
-# ethnicity_model = joblib.load("ethnicity_model.pkl")
+# gender_model = joblib.load("./svc_rbf_model.pkl")
+skincolor_model = joblib.load("skincolor_model.pkl")
 # age_model = joblib.load("age_model.pkl")
 # emotion_model = joblib.load("emotion_model.pkl")
 
