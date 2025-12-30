@@ -1,0 +1,37 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\KDT\\Desktop\\KDT_10SL\\EX10_C\\EXAM\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{46927D9B-E47E-4FD6-930B-48B39762E7A5}|DAY03\\DAY03.vcxproj|C:\\Users\\KDT\\Desktop\\KDT_10SL\\EX10_C\\EXAM\\DAY03\\ex06_logical_op.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{46927D9B-E47E-4FD6-930B-48B39762E7A5}|DAY03\\DAY03.vcxproj|solutionrelative:DAY03\\ex06_logical_op.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "ex06_logical_op.c",
+              "DocumentMoniker": "C:\\Users\\KDT\\Desktop\\KDT_10SL\\EX10_C\\EXAM\\DAY03\\ex06_logical_op.c",
+              "RelativeDocumentMoniker": "DAY03\\ex06_logical_op.c",
+              "ToolTip": "C:\\Users\\KDT\\Desktop\\KDT_10SL\\EX10_C\\EXAM\\DAY03\\ex06_logical_op.c",
+              "RelativeToolTip": "DAY03\\ex06_logical_op.c",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAAACAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
+              "WhenOpened": "2025-12-30T04:16:09.066Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
