@@ -6,4 +6,4 @@ if torch.cuda.is_available():
     print(f'Device Capabilty : {torch.cuda.get_device_capability()}')
 
 else:
-    print("No GPU")          
+    print("No GPU")
