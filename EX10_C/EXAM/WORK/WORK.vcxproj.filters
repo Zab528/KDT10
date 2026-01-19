@@ -14,4 +14,29 @@
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="D1231_work_이준기.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="D0102_work_이준기.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="D0106_work_이준기.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="D0107_work_이준기.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="D0114_work_이준기.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="D0116_work_이준기.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="header.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>

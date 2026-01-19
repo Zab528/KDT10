@@ -3,8 +3,12 @@
   "WorkspaceRootPath": "C:\\Users\\KDT\\Desktop\\KDT_10SL\\EX10_C\\EXAM\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{46927D9B-E47E-4FD6-930B-48B39762E7A5}|DAY03\\DAY03.vcxproj|C:\\Users\\KDT\\Desktop\\KDT_10SL\\EX10_C\\EXAM\\DAY03\\ex06_logical_op.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{46927D9B-E47E-4FD6-930B-48B39762E7A5}|DAY03\\DAY03.vcxproj|solutionrelative:DAY03\\ex06_logical_op.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{6CDBF837-78D1-470D-943D-7788CD8D37F9}|WORK\\WORK.vcxproj|C:\\Users\\KDT\\Desktop\\KDT_10SL\\EX10_C\\EXAM\\WORK\\D0116_work_\uC774\uC900\uAE30.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{6CDBF837-78D1-470D-943D-7788CD8D37F9}|WORK\\WORK.vcxproj|solutionrelative:WORK\\D0116_work_\uC774\uC900\uAE30.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4F750A7E-8840-4C9A-80FF-8B9572AFAD88}|DAY09\\DAY09.vcxproj|C:\\Users\\KDT\\Desktop\\KDT_10SL\\EX10_C\\EXAM\\DAY09\\ex03_ppointer.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{4F750A7E-8840-4C9A-80FF-8B9572AFAD88}|DAY09\\DAY09.vcxproj|solutionrelative:DAY09\\ex03_ppointer.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -14,19 +18,32 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "ex06_logical_op.c",
-              "DocumentMoniker": "C:\\Users\\KDT\\Desktop\\KDT_10SL\\EX10_C\\EXAM\\DAY03\\ex06_logical_op.c",
-              "RelativeDocumentMoniker": "DAY03\\ex06_logical_op.c",
-              "ToolTip": "C:\\Users\\KDT\\Desktop\\KDT_10SL\\EX10_C\\EXAM\\DAY03\\ex06_logical_op.c",
-              "RelativeToolTip": "DAY03\\ex06_logical_op.c",
-              "ViewState": "AgIAAAwAAAAAAAAAAAAAACAAAAAAAAAAAAAAAA==",
+              "DocumentIndex": 1,
+              "Title": "ex03_ppointer.c",
+              "DocumentMoniker": "C:\\Users\\KDT\\Desktop\\KDT_10SL\\EX10_C\\EXAM\\DAY09\\ex03_ppointer.c",
+              "RelativeDocumentMoniker": "DAY09\\ex03_ppointer.c",
+              "ToolTip": "C:\\Users\\KDT\\Desktop\\KDT_10SL\\EX10_C\\EXAM\\DAY09\\ex03_ppointer.c",
+              "RelativeToolTip": "DAY09\\ex03_ppointer.c",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
-              "WhenOpened": "2025-12-30T04:16:09.066Z",
+              "WhenOpened": "2026-01-18T08:30:41.934Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "D0116_work_\uC774\uC900\uAE30.c",
+              "DocumentMoniker": "C:\\Users\\KDT\\Desktop\\KDT_10SL\\EX10_C\\EXAM\\WORK\\D0116_work_\uC774\uC900\uAE30.c",
+              "RelativeDocumentMoniker": "WORK\\D0116_work_\uC774\uC900\uAE30.c",
+              "ToolTip": "C:\\Users\\KDT\\Desktop\\KDT_10SL\\EX10_C\\EXAM\\WORK\\D0116_work_\uC774\uC900\uAE30.c",
+              "RelativeToolTip": "WORK\\D0116_work_\uC774\uC900\uAE30.c",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAIsAAAADAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
+              "WhenOpened": "2026-01-18T08:29:33.929Z",
               "EditorCaption": ""
             }
           ]
