@@ -6,22 +6,28 @@ import matplotlib.pyplot as plt
 ## 반환결과 : 손실, 정확도
 ## ========================================================
 def train_one_epoch(model, loader, loss_fn, optim, device):
+    ## 모델 동작 모드 설정 : 반드시 학습 전에 서정
     model.train()
+
+    ## 1에포크 후 학습 결과 저장용
     total_loss, correct, total = 0.0, 0, 0
 
+    ## 배치크기만큼 학습 진행
     for x, y in loader:
-        x, y = x, y = x.to(device), y.to(device)
+        ## 피쳐, 타겟 추출 후 위치 설정 
+        ## -> GPU 메모리로 복사(이동)
+        x, y = x.to(device), y.to(device)
 
-        ## 순전파
+        ## 순전파 
         logits = model(x)
+        optim.zero_grad()
         loss = loss_fn(logits, y)
 
         ## 역전파
-        optim.zero_grad()
         loss.backward()
         optim.step()
 
-        ## 학습 결과 계산 및 저장
+        ## 학습 결과 계산 밑 저장 
         total_loss += loss.item() * x.size(0)
         pred = logits.argmax(dim=1)
         correct += (pred == y).sum().item()
@@ -46,14 +52,15 @@ def evaluate(model, loader, loss_fn, device):
 
     ## 검증/테스트용 배치크기만큼 로딩 후 예측 진행
     for x, y in loader:
-        ## 피쳐, 타겟 추출 후 위치 설정
-        x, y = x, y = x.to(device), y.to(device)
+        ## 피쳐, 타겟 추출 후 위치 설정 
+        ## -> GPU 메모리로 복사(이동)
+        x, y = x.to(device), y.to(device)
 
         ## 순전파
         logits = model(x)
         loss = loss_fn(logits, y)
 
-        ## 예측 결과 저장
+        ## 예측 결과 저장 
         total_loss += loss.item() * x.size(0)
         pred        = logits.argmax(dim=1)
         correct    += (pred == y).sum().item()
@@ -74,6 +81,8 @@ def show_predictions(model, loader, class_names, device, n=8):
     x = x.to(device)
 
     logits = model(x)
+    
+    ##-> loss 계산/역전파가 끝난 뒤 지표용으로만 CPU로 내림
     pred = logits.argmax(dim=1).cpu()
     y = y.cpu()
 
