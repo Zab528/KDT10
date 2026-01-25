@@ -99,21 +99,27 @@ def show_predictions(model, loader, class_names, device, n=8):
 ## 반환결과 :  - 
 ## ========================================================
 def plot_history(history, title="Training Curves"):
-    
-    epochs = list(range(1, len(history["train_loss"])))
+
+    n_epochs = min(
+        len(history["train_loss"]),
+        len(history["val_loss"]),
+        len(history["train_f1"]),
+        len(history["val_f1"])
+    )
+    epochs = list(range(1, n_epochs + 1))
 
     plt.figure(figsize=(12, 4))
 
     plt.subplot(1, 2, 1)
-    plt.plot(epochs, history["train_loss"], label="train_loss")
-    plt.plot(epochs, history["val_loss"],   label="val_loss")
+    plt.plot(epochs, history["train_loss"][:n_epochs], label="train_loss")
+    plt.plot(epochs, history["val_loss"][:n_epochs],   label="val_loss")
     plt.xlabel("Epoch"); plt.ylabel("Loss")
     plt.title(f"{title} - Loss")
     plt.legend(); plt.grid(True)
 
     plt.subplot(1, 2, 2)
-    plt.plot(epochs, history["train_f1"], label="train_f1")
-    plt.plot(epochs, history["val_f1"],   label="val_f1")
+    plt.plot(epochs, history["train_f1"][:n_epochs], label="train_f1")
+    plt.plot(epochs, history["val_f1"][:n_epochs],   label="val_f1")
     plt.xlabel("Epoch"); plt.ylabel("F1-score")
     plt.title(f"{title} - F1-score")
     plt.legend(); plt.grid(True)
