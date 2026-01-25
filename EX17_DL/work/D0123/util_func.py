@@ -100,7 +100,7 @@ def show_predictions(model, loader, class_names, device, n=8):
 ## ========================================================
 def plot_history(history, title="Training Curves"):
     
-    epochs = list(range(1, len(history["train_loss"]) + 1))
+    epochs = list(range(1, len(history["train_loss"])))
 
     plt.figure(figsize=(12, 4))
 
