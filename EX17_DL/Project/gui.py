@@ -73,7 +73,7 @@ with gr.Blocks(title="AI 민원 처리 시스템") as demo:
                 # =========================
                 # 왼쪽: 이미지 입력
                 # =========================
-                with gr.Column(scale=2):
+                with gr.Column(scale=1.5):
                     image_input = gr.Image(
                         label="📷 사진 업로드",
                         type="numpy"
@@ -82,7 +82,7 @@ with gr.Blocks(title="AI 민원 처리 시스템") as demo:
                 # =========================
                 # 오른쪽: 텍스트 입력
                 # =========================
-                with gr.Column(scale=1):
+                with gr.Column(scale=1.5):
                     title_input = gr.Textbox(label="제목")
                     name_input = gr.Textbox(label="성함")
                     phone_input = gr.Textbox(label="전화번호")
