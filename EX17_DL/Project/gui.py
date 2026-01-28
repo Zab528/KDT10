@@ -77,7 +77,7 @@ with gr.Blocks(title="AI 민원 처리 시스템") as demo:
                     image_input = gr.Image(
                         label="📷 사진 업로드",
                         type="numpy",
-                        height = 500
+                        height = 1000
                     )
 
                 # =========================
