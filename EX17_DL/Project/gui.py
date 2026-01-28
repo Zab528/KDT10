@@ -1,13 +1,13 @@
 import gradio as gr
-import numpy as np
 import torch
 import torch.nn as nn
+import numpy as np
 import re
 from konlpy.tag import Okt
-import util_func as uf
+import util_func as uf   # 네가 실제로 쓰던 util_func
 
 # =====================================================
-# ⚙️ 환경 설정
+# 환경 설정
 # =====================================================
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 MAX_LEN = 50
@@ -19,40 +19,31 @@ LABEL_NAMES = [
 ]
 
 # =====================================================
-# 🧠 모델 정의 (train 때랑 동일해야 함)
+# 🔴 모델 클래스 (train 때 쓴 구조와 동일해야 함)
 # =====================================================
 class TextClassifier(nn.Module):
-    def __init__(self, vocab_size, embed_dim, hidden_dim, num_classes):
+    def __init__(self):
         super().__init__()
-        self.embedding = nn.Embedding(vocab_size, embed_dim)
-        self.lstm = nn.LSTM(embed_dim, hidden_dim, batch_first=True)
-        self.fc = nn.Linear(hidden_dim, num_classes)
+        self.embedding = nn.Embedding(5000, 128)   # ⚠️ train 때 값으로 맞춰라
+        self.lstm = nn.LSTM(128, 128, batch_first=True)
+        self.fc = nn.Linear(128, 18)
 
     def forward(self, x):
         x = self.embedding(x.long())
-        _, (h_n, _) = self.lstm(x)
-        return self.fc(h_n[-1])
+        _, (h, _) = self.lstm(x)
+        return self.fc(h[-1])
 
 # =====================================================
-# 🔹 모델 로드 (🔥 핵심 수정 부분)
+# 모델 로드 (🔥 핵심)
 # =====================================================
-VOCAB_SIZE = len(uf.word2idx)
-NUM_CLASSES = len(LABEL_NAMES)
-
-model = TextClassifier(
-    vocab_size=VOCAB_SIZE,
-    embed_dim=128,
-    hidden_dim=128,
-    num_classes=NUM_CLASSES
-).to(DEVICE)
-
+model = TextClassifier().to(DEVICE)
 model.load_state_dict(
     torch.load("best_text_model.pth", map_location=DEVICE)
 )
 model.eval()
 
 # =====================================================
-# ✂️ 전처리 (train 때와 동일)
+# 전처리 (train과 동일)
 # =====================================================
 okt = Okt()
 stopwords = ['합니다', '바랍니다', '부탁', '요청', '제발', '주세요', '하십시오']
@@ -64,13 +55,15 @@ def preprocess_text(text):
     return ' '.join(nouns)
 
 # =====================================================
-# 🔮 텍스트 Task 분류 모델
+# 텍스트 Task 분류
 # =====================================================
 def text_task_model(text):
     if text is None or text.strip() == "":
         return "입력 없음"
 
     clean = preprocess_text(text)
+
+    # 🔥 이 부분이 핵심: 네가 train 때 쓰던 그대로
     seq = uf.text_to_sequence(clean)
     seq_pad = uf.pad_sequence([seq], max_len=MAX_LEN)
 
@@ -78,12 +71,12 @@ def text_task_model(text):
 
     with torch.no_grad():
         logits = model(x)
-        pred_idx = torch.argmax(logits, dim=1).item()
+        pred = torch.argmax(logits, dim=1).item()
 
-    return LABEL_NAMES[pred_idx]
+    return LABEL_NAMES[pred]
 
 # =====================================================
-# 🎙️ STT / TTS (더미)
+# STT / TTS (더미)
 # =====================================================
 def stt_func(audio):
     return "음성 인식 결과 텍스트입니다."
@@ -92,36 +85,24 @@ def tts_func(text):
     return f"🔊 {text}"
 
 # =====================================================
-# 📥 민원 처리 파이프라인
+# 민원 처리
 # =====================================================
 def submit_complaint(image, title, name, phone, content):
     task = text_task_model(content)
-
-    return (
-        title,
-        name,
-        phone,
-        content,
-        task
-    )
+    return title, name, phone, content, task
 
 # =====================================================
-# 🧠 Gradio UI
+# Gradio UI
 # =====================================================
 with gr.Blocks() as demo:
-
-    gr.Markdown("## 🏛️ AI 기반 민원 처리 시스템")
+    gr.Markdown("## 🏛️ AI 민원 처리 시스템")
 
     with gr.Tabs():
 
-        # =========================
-        # 민원인 탭
-        # =========================
         with gr.Tab("민원인"):
             with gr.Row():
                 with gr.Column(scale=2):
                     image_input = gr.Image(label="📷 사진 업로드", height=420)
-
                 with gr.Column(scale=3):
                     title_input = gr.Textbox(label="제목")
                     name_input = gr.Textbox(label="성함")
@@ -131,9 +112,6 @@ with gr.Blocks() as demo:
                     stt_btn = gr.Button("🎙️ 음성 → 텍스트")
                     submit_btn = gr.Button("📨 민원 전송")
 
-        # =========================
-        # 상담인 탭
-        # =========================
         with gr.Tab("상담인"):
             out_title = gr.Textbox(label="제목", interactive=False)
             out_name = gr.Textbox(label="성함", interactive=False)
@@ -143,7 +121,6 @@ with gr.Blocks() as demo:
             tts_btn = gr.Button("🔊 읽어주기")
             tts_out = gr.Textbox(label="TTS 출력")
 
-    # 이벤트 연결
     stt_btn.click(stt_func, audio_input, content_input)
     submit_btn.click(
         submit_complaint,
