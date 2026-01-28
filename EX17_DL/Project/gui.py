@@ -3,10 +3,10 @@ import gradio as gr
 with gr.Blocks(
     title="AI 민원 처리 시스템",
     css="""
-    .image-box {
+    #image_box {
         height: 520px;
     }
-    .image-box img {
+    #image_box img {
         object-fit: contain;
         height: 100%;
     }
@@ -32,7 +32,7 @@ with gr.Blocks(
                     image_input = gr.Image(
                         label="📷 사진 업로드",
                         type="numpy",
-                        elem_classes=["image-box"]
+                        elem_id="image_box"
                     )
 
                 # =========================
