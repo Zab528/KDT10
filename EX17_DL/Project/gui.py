@@ -65,14 +65,13 @@ with gr.Blocks(
             gr.Markdown("### 민원 분석 결과")
 
             out_title = gr.Textbox(label="제목", interactive=False)
-            out_content = gr.Textbox(label="민원 내용", lines=5, interactive=False)
 
             out_img_task = gr.Textbox(label="이미지 기반 Task", interactive=False)
             out_txt_task = gr.Textbox(label="텍스트 기반 Task", interactive=False)
             out_priority = gr.Textbox(label="우선순위", interactive=False)
             out_emotion = gr.Textbox(label="감정 상태", interactive=False)
-            out_profanity = gr.Textbox(label="비속어 필터링", interactive=False)
             out_pii = gr.Textbox(label="개인정보", interactive=False)
+            out_content = gr.Textbox(label="필터링 된 민원 내용", lines=5, interactive=False)
 
             tts_btn = gr.Button("🔊 요약 읽어주기")
             tts_output = gr.Textbox(label="TTS 출력", interactive=False)
