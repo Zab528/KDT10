@@ -68,21 +68,22 @@ with gr.Blocks(title="AI 민원 처리 시스템") as demo:
         with gr.Tab("민원인"):
             gr.Markdown("### 민원 접수")
 
-            with gr.Row():
+            with gr.Row(equal_height=True):
 
                 # =========================
                 # 왼쪽: 이미지 입력
                 # =========================
-                with gr.Column(scale=1.5):
+                with gr.Column(scale=1, min_height=520):
                     image_input = gr.Image(
                         label="📷 사진 업로드",
-                        type="numpy"
+                        type="numpy",
+                        height = 500
                     )
 
                 # =========================
                 # 오른쪽: 텍스트 입력
                 # =========================
-                with gr.Column(scale=1.5):
+                with gr.Column(scale=1):
                     title_input = gr.Textbox(label="제목")
                     name_input = gr.Textbox(label="성함")
                     phone_input = gr.Textbox(label="전화번호")
