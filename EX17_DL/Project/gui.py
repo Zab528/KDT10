@@ -68,21 +68,39 @@ with gr.Blocks(title="AI 민원 처리 시스템") as demo:
         with gr.Tab("민원인"):
             gr.Markdown("### 민원 접수")
 
-            image_input = gr.Image(label="사진 업로드", type="numpy")
+            with gr.Row():
 
-            title_input = gr.Textbox(label="제목")
-            name_input = gr.Textbox(label="성함")
-            phone_input = gr.Textbox(label="전화번호")
-            content_input = gr.Textbox(
-                label="민원 내용",
-                lines=6,
-                placeholder="민원 내용을 입력해주세요"
-            )
+                # =========================
+                # 왼쪽: 이미지 입력
+                # =========================
+                with gr.Column(scale=1):
+                    image_input = gr.Image(
+                        label="📷 사진 업로드",
+                        type="numpy"
+                    )
 
-            audio_input = gr.Audio(source="microphone", type="numpy", label="음성 입력")
+                # =========================
+                # 오른쪽: 텍스트 입력
+                # =========================
+                with gr.Column(scale=2):
+                    title_input = gr.Textbox(label="제목")
+                    name_input = gr.Textbox(label="성함")
+                    phone_input = gr.Textbox(label="전화번호")
 
-            stt_btn = gr.Button("🎙️ 음성 → 텍스트")
-            submit_btn = gr.Button("📨 민원 전송")
+                    content_input = gr.Textbox(
+                        label="민원 내용",
+                        lines=6,
+                        placeholder="민원 내용을 입력해주세요"
+                    )
+
+                    audio_input = gr.Audio(
+                        source="microphone",
+                        type="numpy",
+                        label="🎙️ 음성 입력"
+                    )
+
+                    stt_btn = gr.Button("🎙️ 음성 → 텍스트")
+                    submit_btn = gr.Button("📨 민원 전송")
 
         # =========================
         # 상담인 탭
