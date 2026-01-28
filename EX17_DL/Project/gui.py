@@ -1,3 +1,42 @@
+def preprocess_text(text):
+    # 네가 만든 전처리 함수로 교체
+    return text
+
+def text_task_model(text):
+    # torch.load("task_model.pth") 이런 식으로 나중에 교체
+    return "건축허가"
+
+def priority_model(text):
+    return "2순위"
+
+def emotion_model(text):
+    return "불만"
+
+def image_task_model(image):
+    return "건축허가 (이미지)"
+
+
+
+def submit_complaint(image, title, name, phone, content):
+    clean_text = preprocess_text(content)
+
+    img_task = image_task_model(image)
+    txt_task = text_task_model(clean_text)
+    priority = priority_model(clean_text)
+    emotion = emotion_model(clean_text)
+
+    return (
+        title,
+        name,
+        phone,
+        content,
+        img_task,
+        txt_task,
+        priority,
+        emotion
+    )
+
+
 import gradio as gr
 
 with gr.Blocks() as demo:
