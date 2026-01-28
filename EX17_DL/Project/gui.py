@@ -1,46 +1,59 @@
 import gradio as gr
 import numpy as np
 import torch
+import torch.nn as nn
 import re
 from konlpy.tag import Okt
 import util_func as uf
 
 # =====================================================
-# 🔧 환경 설정
+# ⚙️ 환경 설정
 # =====================================================
-
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 MAX_LEN = 50
 
-# =====================================================
-# 🔖 라벨 매핑
-# =====================================================
-
-LABEL_MAP = {
-    0: "건축허가",
-    1: "경제",
-    2: "공통",
-    3: "교통",
-    4: "농업축산",
-    5: "문화체육관광",
-    6: "보건소",
-    7: "복지",
-    8: "산림",
-    9: "상하수도",
-    10: "세무",
-    11: "안전건설",
-    12: "위생",
-    13: "자동차",
-    14: "정보통신",
-    15: "토지",
-    16: "행정",
-    17: "환경미화"
-}
+LABEL_NAMES = [
+    "건축허가", "경제", "공통", "교통", "농업축산", "문화체육관광",
+    "보건소", "복지", "산림", "상하수도", "세무", "안전건설",
+    "위생", "자동차", "정보통신", "토지", "행정", "환경미화"
+]
 
 # =====================================================
-# 🔧 전처리 (train 때와 동일)
+# 🧠 모델 정의 (train 때랑 동일해야 함)
 # =====================================================
+class TextClassifier(nn.Module):
+    def __init__(self, vocab_size, embed_dim, hidden_dim, num_classes):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, embed_dim)
+        self.lstm = nn.LSTM(embed_dim, hidden_dim, batch_first=True)
+        self.fc = nn.Linear(hidden_dim, num_classes)
 
+    def forward(self, x):
+        x = self.embedding(x.long())
+        _, (h_n, _) = self.lstm(x)
+        return self.fc(h_n[-1])
+
+# =====================================================
+# 🔹 모델 로드 (🔥 핵심 수정 부분)
+# =====================================================
+VOCAB_SIZE = len(uf.word2idx)
+NUM_CLASSES = len(LABEL_NAMES)
+
+model = TextClassifier(
+    vocab_size=VOCAB_SIZE,
+    embed_dim=128,
+    hidden_dim=128,
+    num_classes=NUM_CLASSES
+).to(DEVICE)
+
+model.load_state_dict(
+    torch.load("best_text_model.pth", map_location=DEVICE)
+)
+model.eval()
+
+# =====================================================
+# ✂️ 전처리 (train 때와 동일)
+# =====================================================
 okt = Okt()
 stopwords = ['합니다', '바랍니다', '부탁', '요청', '제발', '주세요', '하십시오']
 
@@ -51,75 +64,92 @@ def preprocess_text(text):
     return ' '.join(nouns)
 
 # =====================================================
-# 🤖 모델 로드
+# 🔮 텍스트 Task 분류 모델
 # =====================================================
-
-model = torch.load("best_text_model.pth", map_location=DEVICE)
-model.eval()
-
-# =====================================================
-# 🧠 텍스트 Task 분류 모델 (핵심!)
-# =====================================================
-
 def text_task_model(text):
     if text is None or text.strip() == "":
         return "입력 없음"
 
     clean = preprocess_text(text)
-
-    # util_func에 있던 방식 그대로 사용
     seq = uf.text_to_sequence(clean)
     seq_pad = uf.pad_sequence([seq], max_len=MAX_LEN)
 
-    x = torch.tensor(seq_pad, dtype=torch.float32).to(DEVICE)
+    x = torch.tensor(seq_pad).to(DEVICE)
 
     with torch.no_grad():
         logits = model(x)
         pred_idx = torch.argmax(logits, dim=1).item()
 
-    return LABEL_MAP[pred_idx]
+    return LABEL_NAMES[pred_idx]
 
 # =====================================================
-# 더미 모델들 (나중에 교체)
+# 🎙️ STT / TTS (더미)
 # =====================================================
-
-def image_task_model(image):
-    return "건축허가 (이미지)"
-
-def priority_model(text):
-    return "2순위 (중)"
-
-def emotion_model(text):
-    return "불만 / 불안"
-
-def profanity_filter(text):
-    return "비속어 없음"
-
-def pii_filter(name, phone):
-    return f"이름: {name}, 전화번호: {phone}"
-
 def stt_func(audio):
-    return "🎤 음성에서 변환된 민원 내용입니다."
+    return "음성 인식 결과 텍스트입니다."
 
 def tts_func(text):
     return f"🔊 {text}"
 
 # =====================================================
-# 📥 민원 처리
+# 📥 민원 처리 파이프라인
 # =====================================================
-
 def submit_complaint(image, title, name, phone, content):
-    txt_task = text_task_model(content)
+    task = text_task_model(content)
 
     return (
         title,
         name,
         phone,
         content,
-        image_task_model(image),
-        txt_task,
-        priority_model(content),
-        emotion_model(content),
-        profanity_filter(content),
-        pii_filter(name, phone)
+        task
     )
+
+# =====================================================
+# 🧠 Gradio UI
+# =====================================================
+with gr.Blocks() as demo:
+
+    gr.Markdown("## 🏛️ AI 기반 민원 처리 시스템")
+
+    with gr.Tabs():
+
+        # =========================
+        # 민원인 탭
+        # =========================
+        with gr.Tab("민원인"):
+            with gr.Row():
+                with gr.Column(scale=2):
+                    image_input = gr.Image(label="📷 사진 업로드", height=420)
+
+                with gr.Column(scale=3):
+                    title_input = gr.Textbox(label="제목")
+                    name_input = gr.Textbox(label="성함")
+                    phone_input = gr.Textbox(label="전화번호")
+                    content_input = gr.Textbox(label="민원 내용", lines=6)
+                    audio_input = gr.Audio(source="microphone")
+                    stt_btn = gr.Button("🎙️ 음성 → 텍스트")
+                    submit_btn = gr.Button("📨 민원 전송")
+
+        # =========================
+        # 상담인 탭
+        # =========================
+        with gr.Tab("상담인"):
+            out_title = gr.Textbox(label="제목", interactive=False)
+            out_name = gr.Textbox(label="성함", interactive=False)
+            out_phone = gr.Textbox(label="전화번호", interactive=False)
+            out_content = gr.Textbox(label="민원 내용", interactive=False)
+            out_task = gr.Textbox(label="분류 결과", interactive=False)
+            tts_btn = gr.Button("🔊 읽어주기")
+            tts_out = gr.Textbox(label="TTS 출력")
+
+    # 이벤트 연결
+    stt_btn.click(stt_func, audio_input, content_input)
+    submit_btn.click(
+        submit_complaint,
+        [image_input, title_input, name_input, phone_input, content_input],
+        [out_title, out_name, out_phone, out_content, out_task]
+    )
+    tts_btn.click(tts_func, out_content, tts_out)
+
+demo.launch()
