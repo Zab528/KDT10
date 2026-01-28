@@ -1,5 +1,7 @@
 import gradio as gr
 import numpy as np
+from inference_text_task import predict_text_task
+
 
 # =====================================================
 # 🔧 전처리 & 모델 (지금은 더미 → 나중에 교체)
@@ -13,7 +15,7 @@ def image_task_model(image):
     return "건축허가 (이미지)"
 
 def text_task_model(text):
-    return "건축허가"
+    return predict_text_task(text)
 
 def priority_model(text):
     return "2순위 (중)"
